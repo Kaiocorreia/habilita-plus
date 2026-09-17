@@ -1,0 +1,2 @@
+# Este arquivo existe só para o Git versionar a pasta 'instance/'.
+# O banco (habilita.db) é gerado por database/init_db.py e fica fora do versionamento.
