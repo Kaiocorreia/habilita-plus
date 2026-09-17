@@ -273,11 +273,10 @@ O endereço final será `https://SEUUSUARIO.pythonanywhere.com`.
 
 ### 2. Enviar o projeto
 
-No painel, abra um **Bash console** e clone o repositório (ou envie um `.zip` pela aba
-*Files* e descompacte):
+No painel, abra um **Bash console** e clone o repositório:
 
 ```bash
-git clone https://github.com/SEUUSUARIO/habilita-plus.git
+git clone https://github.com/Kaiocorreia/habilita-plus.git
 cd habilita-plus
 ```
 
@@ -345,11 +344,28 @@ Volte à aba **Web** e clique no botão verde **Reload**. O site estará em
 
 ### Atualizando depois
 
+Quando o código mudar aqui no computador, envie para o GitHub:
+
+```bash
+git add -A && git commit -m "descricao da mudanca" && git push
+```
+
+E no console do PythonAnywhere:
+
 ```bash
 cd ~/habilita-plus && git pull
 ```
 
-E clique em **Reload** na aba Web.
+Depois clique em **Reload** na aba Web.
+
+> O `git pull` traz só o código. O banco (`instance/habilita.db`) fica de fora do
+> versionamento de propósito — o do servidor é independente do seu, e os cadastros feitos
+> no site publicado não são apagados por um `git pull`. Só rode `init_db.py` lá de novo se
+> quiser mesmo zerar tudo (o `schema.sql` tiver mudado, por exemplo).
+
+## Repositório
+
+O código está em **https://github.com/Kaiocorreia/habilita-plus**
 
 ## Limitações conhecidas
 
