@@ -1,0 +1,32 @@
+{% extends "base.html" %}
+{% block title %}Criar conta · Habilita+{% endblock %}
+{% block content %}
+<div class="card">
+    <div class="cabecalho-tela">
+        <h1>Criar conta</h1>
+        <p class="texto-secundario">Como você quer usar o Habilita+?</p>
+    </div>
+
+    <form method="POST">
+        <div class="opcoes-lista">
+            <label class="opcao-cartao">
+                <input type="radio" name="tipo" value="candidato" required>
+                <span class="opcao-texto">
+                    <strong>Sou candidato(a) à CNH</strong>
+                    <span>Quero encontrar instrutores e agendar aulas.</span>
+                </span>
+            </label>
+            <label class="opcao-cartao">
+                <input type="radio" name="tipo" value="instrutor">
+                <span class="opcao-texto">
+                    <strong>Sou instrutor(a) ou autoescola</strong>
+                    <span>Quero oferecer aulas na plataforma.</span>
+                </span>
+            </label>
+        </div>
+        <button type="submit" class="botao botao-primario">Continuar</button>
+    </form>
+</div>
+
+<p class="rodape-acao">Já tem conta? <a href="{{ url_for('auth.login') }}">Entrar</a></p>
+{% endblock %}

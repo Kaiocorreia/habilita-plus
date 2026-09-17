@@ -1,0 +1,9 @@
+{% extends "base.html" %}
+{% block title %}Habilita+{% endblock %}
+{% block content %}
+<div class="splash">
+    <div class="splash-logo">Habilita<span class="mais">+</span></div>
+    <p class="splash-slogan">Democratizando o acesso à habilitação</p>
+    <a class="botao botao-primario" href="{{ url_for('auth.login') }}" style="width: 200px;">Continuar</a>
+</div>
+{% endblock %}

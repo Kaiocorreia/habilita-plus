@@ -1,0 +1,39 @@
+{% extends "base.html" %}
+{% block title %}Aula agendada · Habilita+{% endblock %}
+{% block content %}
+
+<div class="sucesso">
+    <div class="sucesso-icone" aria-hidden="true">✓</div>
+    <h1>Aula agendada com sucesso</h1>
+    <p class="texto-secundario">Enviamos os detalhes para o seu e-mail.</p>
+
+    <div class="card resumo">
+        <dl class="resumo-lista">
+            <div>
+                <dt>Instrutor</dt>
+                <dd>{{ agendamento["nome_instrutor"] }}</dd>
+            </div>
+            <div>
+                <dt>Data</dt>
+                <dd>{{ data_extenso }}</dd>
+            </div>
+            <div>
+                <dt>Horário</dt>
+                <dd>{{ agendamento["horario"] }}</dd>
+            </div>
+            <div>
+                <dt>Veículo</dt>
+                <dd>{{ agendamento["marca"] ~ " " ~ agendamento["modelo"] if agendamento["marca"] else "Veículo próprio" }}</dd>
+            </div>
+            <div class="resumo-total">
+                <dt>Total</dt>
+                <dd>R$ {{ "%.2f"|format(total) | replace(".", ",") }}</dd>
+            </div>
+        </dl>
+    </div>
+
+    <a class="botao botao-primario" href="{{ url_for('main.home') }}">Voltar para o início</a>
+    <a class="botao botao-secundario" href="{{ url_for('busca.buscar') }}">Agendar outra aula</a>
+</div>
+
+{% endblock %}

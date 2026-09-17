@@ -1,0 +1,60 @@
+{% extends "base.html" %}
+{% from "_cartao_instrutor.html" import foto %}
+{% block title %}Confirmar agendamento · Habilita+{% endblock %}
+{% block content %}
+
+<header class="cabecalho-app">
+    <a class="link-voltar" href="{{ url_for('agendamentos.escolher', instrutor_id=instrutor['id']) }}">← Voltar</a>
+</header>
+
+<h1 class="titulo-saudacao">Confirmar</h1>
+<p class="texto-secundario ajuda-secao">Revise os dados antes de finalizar.</p>
+
+<div class="card resumo">
+    <div class="resumo-instrutor">
+        {{ foto(instrutor) }}
+        <div>
+            <strong>{{ instrutor["nome"] }}</strong>
+            <p class="texto-secundario">{{ instrutor["regiao_atuacao"] }}</p>
+        </div>
+    </div>
+
+    <dl class="resumo-lista">
+        <div>
+            <dt>Data</dt>
+            <dd>{{ data_extenso }}</dd>
+        </div>
+        <div>
+            <dt>Horário</dt>
+            <dd>{{ horario }}</dd>
+        </div>
+        <div>
+            <dt>Veículo</dt>
+            <dd>{{ veiculo["marca"] ~ " " ~ veiculo["modelo"] if veiculo else "Veículo próprio" }}</dd>
+        </div>
+    </dl>
+
+    <dl class="resumo-valores">
+        <div>
+            <dt>Aula com {{ instrutor["nome"].split()[0] }}</dt>
+            <dd>R$ {{ "%.2f"|format(instrutor["valor_aula"]) | replace(".", ",") }}</dd>
+        </div>
+        {% if veiculo %}
+        <div>
+            <dt>Locação do veículo</dt>
+            <dd>R$ {{ "%.2f"|format(valor_locacao) | replace(".", ",") }}</dd>
+        </div>
+        {% endif %}
+        <div class="resumo-total">
+            <dt>Total</dt>
+            <dd>R$ {{ "%.2f"|format(total) | replace(".", ",") }}</dd>
+        </div>
+    </dl>
+</div>
+
+<form method="POST">
+    <button type="submit" class="botao botao-primario">Confirmar agendamento</button>
+</form>
+<p class="rodape-acao">O pagamento é combinado diretamente com o profissional.</p>
+
+{% endblock %}

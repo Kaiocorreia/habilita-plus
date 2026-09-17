@@ -1,0 +1,141 @@
+{% extends "base.html" %}
+{% from "_cartao_instrutor.html" import iniciais, estrelas, foto %}
+{% block title %}{{ instrutor["nome"] }} · Habilita+{% endblock %}
+{% block content %}
+
+<header class="cabecalho-app">
+    <a class="link-voltar" href="{{ url_for('busca.buscar') }}">← Voltar</a>
+</header>
+
+<div class="card perfil-cabecalho">
+    {{ foto(instrutor, "avatar avatar-grande") }}
+    <h1>
+        {{ instrutor["nome"] }}
+        {% if instrutor["verificado"] %}<span class="selo-verificado" title="Perfil verificado">✓</span>{% endif %}
+    </h1>
+    <p class="texto-secundario">{{ instrutor["regiao_atuacao"] or instrutor["cidade"] }}</p>
+
+    {% if instrutor["total_avaliacoes"] %}
+        <p class="instrutor-nota perfil-nota">
+            {{ estrelas(instrutor["media_estrelas"]) }}
+            <strong>{{ "%.1f"|format(instrutor["media_estrelas"]) }}</strong>
+            <span class="texto-secundario">· {{ instrutor["total_avaliacoes"] }} avaliações</span>
+        </p>
+    {% else %}
+        <p class="texto-secundario">Sem avaliações ainda</p>
+    {% endif %}
+
+    <div class="perfil-numeros">
+        <div>
+            <strong>R$ {{ "%.2f"|format(instrutor["valor_aula"]) | replace(".", ",") }}</strong>
+            <span class="texto-secundario">por aula</span>
+        </div>
+        <div>
+            <strong>{{ instrutor["categorias_cnh"] }}</strong>
+            <span class="texto-secundario">categorias</span>
+        </div>
+        <div>
+            <strong>{{ aulas_concluidas }}</strong>
+            <span class="texto-secundario">aulas dadas</span>
+        </div>
+    </div>
+</div>
+
+<section class="secao">
+    <h2 class="titulo-secao">Acessibilidade e atendimento</h2>
+    <div class="card">
+        <ul class="lista-atributos">
+            <li class="{{ 'atributo-sim' if instrutor['atende_libras'] else 'atributo-nao' }}">
+                <span aria-hidden="true">{{ "✓" if instrutor["atende_libras"] else "—" }}</span>
+                Atendimento em Libras
+            </li>
+            <li class="{{ 'atributo-sim' if instrutor['atende_neurodivergentes'] else 'atributo-nao' }}">
+                <span aria-hidden="true">{{ "✓" if instrutor["atende_neurodivergentes"] else "—" }}</span>
+                Experiência com pessoas neurodivergentes
+            </li>
+            <li class="{{ 'atributo-sim' if instrutor['atende_pcd'] else 'atributo-nao' }}">
+                <span aria-hidden="true">{{ "✓" if instrutor["atende_pcd"] else "—" }}</span>
+                Experiência com pessoas com deficiência
+            </li>
+            <li class="{{ 'atributo-sim' if instrutor['somente_mulheres'] else 'atributo-nao' }}">
+                <span aria-hidden="true">{{ "✓" if instrutor["somente_mulheres"] else "—" }}</span>
+                Instrutora mulher
+            </li>
+        </ul>
+    </div>
+</section>
+
+{% if veiculos %}
+<section class="secao">
+    <h2 class="titulo-secao">Veículos disponíveis</h2>
+    <p class="texto-secundario ajuda-secao">
+        Escolha o veículo no agendamento. O valor da locação é somado ao preço da aula.
+    </p>
+
+    {% for veiculo in veiculos %}
+    <article class="cartao-veiculo">
+        <img class="veiculo-imagem" src="{{ url_for('static', filename=veiculo['imagem']) }}"
+             alt="{{ veiculo['marca'] }} {{ veiculo['modelo'] }}">
+        <div class="veiculo-info">
+            <h3>{{ veiculo["marca"] }} {{ veiculo["modelo"] }}</h3>
+            <div class="veiculo-etiquetas">
+                <span class="etiqueta etiqueta-categoria">CNH {{ veiculo["categoria_cnh"] }}</span>
+                <span class="etiqueta">{{ "Automático" if veiculo["transmissao"] == "automatico" else "Manual" }}</span>
+                {% if veiculo["adaptado"] %}<span class="etiqueta etiqueta-pcd">Adaptado</span>{% endif %}
+            </div>
+            <p class="veiculo-preco">
+                + R$ {{ "%.2f"|format(veiculo["valor_locacao"]) | replace(".", ",") }}
+                <span class="texto-secundario">locação / aula</span>
+            </p>
+            <p class="veiculo-total texto-secundario">
+                Total da aula: <strong>R$ {{ "%.2f"|format(instrutor["valor_aula"] + veiculo["valor_locacao"]) | replace(".", ",") }}</strong>
+            </p>
+        </div>
+    </article>
+    {% endfor %}
+</section>
+{% endif %}
+
+{% if instrutor["veiculo_adaptado_disponivel"] %}
+<section class="secao">
+    <div class="card cartao-parceria">
+        <span class="etiqueta etiqueta-veiculo">Veículo adaptado</span>
+        <h3>Veículo de locação adaptado disponível</h3>
+        <p class="texto-secundario">
+            Este profissional oferece veículo adaptado para as aulas, em parceria com locadora conveniada.
+            Combine os detalhes no agendamento.
+        </p>
+    </div>
+</section>
+{% endif %}
+
+<section class="secao">
+    <h2 class="titulo-secao">Avaliações ({{ avaliacoes|length }})</h2>
+
+    {% for avaliacao in avaliacoes %}
+    <article class="card avaliacao">
+        <div class="avaliacao-topo">
+            <strong>{{ avaliacao["nome_candidato"].split()[0] }} {{ avaliacao["nome_candidato"].split()[-1][0] }}.</strong>
+            <span class="texto-secundario">{{ avaliacao["data_formatada"] }}</span>
+        </div>
+        {{ estrelas(avaliacao["nota"]) }}
+        {% if avaliacao["comentario"] %}
+            <p class="avaliacao-comentario">{{ avaliacao["comentario"] }}</p>
+        {% endif %}
+    </article>
+    {% else %}
+    <div class="card">
+        <p class="texto-secundario">Este profissional ainda não recebeu avaliações.</p>
+    </div>
+    {% endfor %}
+</section>
+
+<div class="barra-acao">
+    <div>
+        <strong>R$ {{ "%.2f"|format(instrutor["valor_aula"]) | replace(".", ",") }}</strong>
+        <span class="texto-secundario">/ aula</span>
+    </div>
+    <a class="botao botao-primario botao-acao" href="{{ url_for('agendamentos.escolher', instrutor_id=instrutor['id']) }}">Agendar aula</a>
+</div>
+
+{% endblock %}

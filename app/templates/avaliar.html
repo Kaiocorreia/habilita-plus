@@ -1,0 +1,44 @@
+{% extends "base.html" %}
+{% from "_cartao_instrutor.html" import foto %}
+{% block title %}Avaliar aula · Habilita+{% endblock %}
+{% block content %}
+
+<header class="cabecalho-app">
+    <a class="link-voltar" href="{{ url_for('main.home') }}">← Voltar</a>
+</header>
+
+<h1 class="titulo-saudacao">Como foi a aula?</h1>
+<p class="texto-secundario ajuda-secao">Sua avaliação ajuda outros candidatos a escolher.</p>
+
+<div class="card">
+    <div class="resumo-instrutor">
+        {{ foto(aula) }}
+        <div>
+            <strong>{{ aula["nome_instrutor"] }}</strong>
+            <p class="texto-secundario">{{ aula["data_formatada"] }} às {{ aula["horario"] }}</p>
+        </div>
+    </div>
+
+    <form method="POST">
+        <p class="rotulo-grupo">Sua nota</p>
+        <div class="estrelas-input">
+            {% for valor in [5, 4, 3, 2, 1] %}
+            <input type="radio" id="nota{{ valor }}" name="nota" value="{{ valor }}" required>
+            <label for="nota{{ valor }}" title="{{ valor }} de 5 estrelas">
+                <span class="oculto-visualmente">{{ valor }} estrelas</span>
+                <span aria-hidden="true">★</span>
+            </label>
+            {% endfor %}
+        </div>
+
+        <div class="campo">
+            <label for="comentario">Comentário (opcional)</label>
+            <textarea id="comentario" name="comentario" rows="4"
+                      placeholder="Conte como foi a aula, se o instrutor foi pontual, paciente..."></textarea>
+        </div>
+
+        <button type="submit" class="botao botao-primario">Enviar avaliação</button>
+    </form>
+</div>
+
+{% endblock %}

@@ -1,0 +1,51 @@
+{% extends "base.html" %}
+{% block title %}Acessibilidade · Habilita+{% endblock %}
+{% block content %}
+<div class="card">
+    <div class="cabecalho-tela">
+        <p class="progresso-etapas">Etapa 4 de 4</p>
+        <h1>Acessibilidade</h1>
+        <p class="texto-secundario">Isso nos ajuda a indicar os instrutores certos para você. Se não se aplica, pode pular.</p>
+    </div>
+
+    <form method="POST">
+        <div class="campo">
+            <label for="tipo_deficiencia">Tipo de deficiência</label>
+            <select id="tipo_deficiencia" name="tipo_deficiencia">
+                <option value="nenhuma">Não tenho / prefiro não informar</option>
+                <option value="Surdez ou deficiência auditiva">Surdez ou deficiência auditiva</option>
+                <option value="Deficiência visual">Deficiência visual</option>
+                <option value="Deficiência física">Deficiência física</option>
+                <option value="Outra">Outra</option>
+            </select>
+        </div>
+
+        <div class="campo">
+            <label>Canal de comunicação preferido</label>
+            <div class="opcoes-lista">
+                <label class="opcao-cartao">
+                    <input type="radio" name="canal_comunicacao" value="texto" checked>
+                    <span class="opcao-texto"><strong>Texto</strong></span>
+                </label>
+                <label class="opcao-cartao">
+                    <input type="radio" name="canal_comunicacao" value="libras">
+                    <span class="opcao-texto"><strong>Libras</strong></span>
+                </label>
+                <label class="opcao-cartao">
+                    <input type="radio" name="canal_comunicacao" value="audio">
+                    <span class="opcao-texto"><strong>Áudio</strong></span>
+                </label>
+            </div>
+        </div>
+
+        <label class="opcao-cartao" style="margin-bottom: 20px;">
+            <input type="checkbox" name="precisa_veiculo_adaptado">
+            <span class="opcao-texto">
+                <strong>Preciso de veículo adaptado para as aulas</strong>
+            </span>
+        </label>
+
+        <button type="submit" class="botao botao-primario">Concluir cadastro</button>
+    </form>
+</div>
+{% endblock %}

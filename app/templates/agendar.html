@@ -1,0 +1,124 @@
+{% extends "base.html" %}
+{% block title %}Agendar aula · Habilita+{% endblock %}
+{% block content %}
+
+<header class="cabecalho-app">
+    <a class="link-voltar" href="{{ url_for('instrutores.perfil', instrutor_id=instrutor['id']) }}">← Voltar</a>
+</header>
+
+<h1 class="titulo-saudacao">Agendar aula</h1>
+<p class="texto-secundario ajuda-secao">com {{ instrutor["nome"] }}</p>
+
+<form method="POST" action="{{ url_for('agendamentos.revisar', instrutor_id=instrutor['id']) }}">
+    <input type="hidden" name="data" value="{{ data_escolhida }}">
+
+    <div class="card calendario">
+        <div class="calendario-topo">
+            {% if pode_voltar %}
+                <a class="calendario-seta" href="{{ url_for('agendamentos.escolher', instrutor_id=instrutor['id'], mes=mes_anterior) }}" aria-label="Mês anterior">‹</a>
+            {% else %}
+                <span class="calendario-seta calendario-seta-inativa" aria-hidden="true">‹</span>
+            {% endif %}
+            <strong>{{ nome_mes|capitalize }} {{ ano }}</strong>
+            <a class="calendario-seta" href="{{ url_for('agendamentos.escolher', instrutor_id=instrutor['id'], mes=mes_seguinte) }}" aria-label="Próximo mês">›</a>
+        </div>
+
+        <table class="calendario-grade">
+            <thead>
+                <tr>
+                    {% for dia_semana in dias_semana %}<th scope="col">{{ dia_semana }}</th>{% endfor %}
+                </tr>
+            </thead>
+            <tbody>
+                {% for semana in semanas %}
+                <tr>
+                    {% for dia in semana %}
+                    <td>
+                        {% if dia is none %}
+                            <span class="dia-vazio"></span>
+                        {% elif dia < hoje %}
+                            <span class="dia dia-passado">{{ dia.day }}</span>
+                        {% else %}
+                            <a class="dia {{ 'dia-escolhido' if data_escolhida == dia.isoformat() }}"
+                               href="{{ url_for('agendamentos.escolher', instrutor_id=instrutor['id'], mes=mes, data=dia.isoformat()) }}">{{ dia.day }}</a>
+                        {% endif %}
+                    </td>
+                    {% endfor %}
+                </tr>
+                {% endfor %}
+            </tbody>
+        </table>
+    </div>
+
+    {% if data_escolhida %}
+    <section class="secao">
+        <h2 class="titulo-secao">Horário</h2>
+        <div class="card">
+            <div class="grade-horarios">
+                {% for horario in horarios %}
+                    {% if horario in horarios_ocupados %}
+                        <span class="horario horario-ocupado" title="Horário já reservado">{{ horario }}</span>
+                    {% else %}
+                        <label class="horario">
+                            <input type="radio" name="horario" value="{{ horario }}" required>
+                            <span>{{ horario }}</span>
+                        </label>
+                    {% endif %}
+                {% endfor %}
+            </div>
+            {% if horarios_ocupados %}
+            <p class="dica-campo">Horários em cinza já estão reservados.</p>
+            {% endif %}
+        </div>
+    </section>
+
+    {% if veiculos %}
+    <section class="secao">
+        <h2 class="titulo-secao">Veículo</h2>
+        <p class="texto-secundario ajuda-secao">A locação é somada ao valor da aula.</p>
+
+        <label class="cartao-veiculo veiculo-opcao">
+            <input type="radio" name="veiculo_id" value="" checked>
+            <div class="veiculo-info">
+                <h3>Veículo próprio</h3>
+                <p class="veiculo-preco">Sem custo de locação</p>
+                <p class="veiculo-total texto-secundario">
+                    Total da aula: <strong>R$ {{ "%.2f"|format(instrutor["valor_aula"]) | replace(".", ",") }}</strong>
+                </p>
+            </div>
+        </label>
+
+        {% for veiculo in veiculos %}
+        <label class="cartao-veiculo veiculo-opcao">
+            <input type="radio" name="veiculo_id" value="{{ veiculo['id'] }}">
+            <img class="veiculo-imagem" src="{{ url_for('static', filename=veiculo['imagem']) }}"
+                 alt="{{ veiculo['marca'] }} {{ veiculo['modelo'] }}">
+            <div class="veiculo-info">
+                <h3>{{ veiculo["marca"] }} {{ veiculo["modelo"] }}</h3>
+                <div class="veiculo-etiquetas">
+                    <span class="etiqueta etiqueta-categoria">CNH {{ veiculo["categoria_cnh"] }}</span>
+                    <span class="etiqueta">{{ "Automático" if veiculo["transmissao"] == "automatico" else "Manual" }}</span>
+                    {% if veiculo["adaptado"] %}<span class="etiqueta etiqueta-pcd">Adaptado</span>{% endif %}
+                </div>
+                <p class="veiculo-preco">
+                    + R$ {{ "%.2f"|format(veiculo["valor_locacao"]) | replace(".", ",") }}
+                    <span class="texto-secundario">locação / aula</span>
+                </p>
+                <p class="veiculo-total texto-secundario">
+                    Total da aula: <strong>R$ {{ "%.2f"|format(instrutor["valor_aula"] + veiculo["valor_locacao"]) | replace(".", ",") }}</strong>
+                </p>
+            </div>
+        </label>
+        {% endfor %}
+    </section>
+    {% endif %}
+
+    <button type="submit" class="botao botao-primario">Revisar agendamento</button>
+    {% else %}
+    <div class="card">
+        <p class="texto-secundario">Escolha um dia no calendário para ver os horários disponíveis.</p>
+    </div>
+    {% endif %}
+</form>
+
+{% endblock %}

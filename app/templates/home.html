@@ -1,0 +1,57 @@
+{% extends "base.html" %}
+{% from "_cartao_instrutor.html" import cartao %}
+{% block title %}Início · Habilita+{% endblock %}
+{% block content %}
+
+<header class="cabecalho-app">
+    <div>
+        <p class="texto-secundario">Olá,</p>
+        <h1 class="titulo-saudacao">{{ usuario["nome"].split()[0] }}</h1>
+    </div>
+    <a class="link-sair" href="{{ url_for('auth.logout') }}">Sair</a>
+</header>
+
+<a class="busca-atalho" href="{{ url_for('busca.buscar', cidade=usuario['cidade']) }}">
+    <span aria-hidden="true">🔎</span>
+    <span>Buscar instrutores {{ "em " ~ usuario["cidade"] if usuario["cidade"] }}</span>
+</a>
+
+{% if minhas_aulas %}
+<section class="secao">
+    <div class="secao-cabecalho">
+        <h2>Minhas aulas</h2>
+    </div>
+
+    {% for aula in minhas_aulas %}
+    <article class="cartao-aula">
+        <div class="aula-info">
+            <strong>{{ aula["nome_instrutor"] }}</strong>
+            <p class="texto-secundario">{{ aula["data_formatada"] }} às {{ aula["horario"] }}</p>
+            <span class="status status-{{ aula['status'] }}">{{ aula["status"]|capitalize }}</span>
+        </div>
+        {% if aula["status"] == "concluido" and not aula["avaliacao_id"] %}
+            <a class="botao-pequeno" href="{{ url_for('avaliacoes.avaliar', agendamento_id=aula['id']) }}">Avaliar</a>
+        {% elif aula["avaliacao_id"] %}
+            <span class="texto-secundario aula-avaliada">Avaliada ✓</span>
+        {% endif %}
+    </article>
+    {% endfor %}
+</section>
+{% endif %}
+
+<section class="secao">
+    <div class="secao-cabecalho">
+        <h2>Instrutores em destaque</h2>
+        <a href="{{ url_for('busca.buscar', ordenar='avaliacao') }}">Ver todos</a>
+    </div>
+
+    {% for instrutor in instrutores %}
+        {{ cartao(instrutor) }}
+    {% else %}
+        <div class="card">
+            <p class="texto-secundario">Nenhum instrutor verificado disponível no momento.</p>
+        </div>
+    {% endfor %}
+</section>
+
+{% endblock %}

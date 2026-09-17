@@ -1,0 +1,45 @@
+{% extends "base.html" %}
+{% block title %}Seus dados · Habilita+{% endblock %}
+{% block content %}
+<div class="card">
+    <div class="cabecalho-tela">
+        <p class="progresso-etapas">Etapa 1 de {{ "4" if session.get("cadastro", {}).get("tipo") == "candidato" else "2" }}</p>
+        <h1>Seus dados</h1>
+        <p class="texto-secundario">Vamos começar com o básico.</p>
+    </div>
+
+    <form method="POST">
+        <div class="campo">
+            <label for="nome">Nome completo</label>
+            <input type="text" id="nome" name="nome" value="{{ dados.get('nome', '') }}" required autofocus>
+        </div>
+        <div class="campo">
+            <label for="email">E-mail</label>
+            <input type="email" id="email" name="email" value="{{ dados.get('email', '') }}" required>
+        </div>
+        <div class="campo">
+            <label for="senha">Senha</label>
+            <input type="password" id="senha" name="senha" required minlength="6">
+            <p class="dica-campo">Mínimo de 6 caracteres.</p>
+        </div>
+        <div class="campo">
+            <label for="cidade">Cidade (Espírito Santo)</label>
+            <select id="cidade" name="cidade" required>
+                <option value="" disabled {{ "selected" if not dados.get('cidade') }}>Selecione sua cidade</option>
+                {% for cidade in cidades %}
+                <option value="{{ cidade }}" {{ "selected" if dados.get('cidade') == cidade }}>{{ cidade }}</option>
+                {% endfor %}
+            </select>
+        </div>
+        <div class="campo">
+            <label for="telefone">Telefone</label>
+            <div class="campo-com-prefixo">
+                <span class="prefixo">({{ ddd }})</span>
+                <input type="tel" id="telefone" name="telefone" inputmode="numeric"
+                       placeholder="99999-9999" value="{{ dados.get('telefone', '') }}">
+            </div>
+        </div>
+        <button type="submit" class="botao botao-primario">Continuar</button>
+    </form>
+</div>
+{% endblock %}

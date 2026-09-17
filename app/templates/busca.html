@@ -1,0 +1,103 @@
+{% extends "base.html" %}
+{% from "_cartao_instrutor.html" import cartao %}
+{% block title %}Buscar instrutores · Habilita+{% endblock %}
+{% block content %}
+
+<header class="cabecalho-app">
+    <div>
+        <a class="link-voltar" href="{{ url_for('main.home') }}">← Voltar</a>
+        <h1 class="titulo-saudacao">Buscar</h1>
+    </div>
+</header>
+
+<form class="card filtros" method="GET">
+    <div class="campo">
+        <label for="cidade">Cidade</label>
+        <select id="cidade" name="cidade">
+            <option value="">Todas as cidades</option>
+            {% for cidade in cidades %}
+            <option value="{{ cidade }}" {{ "selected" if filtros.cidade == cidade }}>{{ cidade }}</option>
+            {% endfor %}
+        </select>
+    </div>
+
+    <div class="filtros-linha">
+        <div class="campo">
+            <label for="categoria">Categoria</label>
+            <select id="categoria" name="categoria">
+                <option value="">Todas</option>
+                {% for categoria in categorias %}
+                <option value="{{ categoria }}" {{ "selected" if filtros.categoria == categoria }}>{{ categoria }}</option>
+                {% endfor %}
+            </select>
+        </div>
+        <div class="campo">
+            <label for="preco_maximo">Preço até (R$)</label>
+            <input type="number" id="preco_maximo" name="preco_maximo" min="0" step="5"
+                   placeholder="Sem limite" value="{{ filtros.preco_maximo }}">
+        </div>
+    </div>
+
+    <div class="campo">
+            <label for="nota_minima">Avaliação</label>
+            <select id="nota_minima" name="nota_minima">
+                <option value="" {{ "selected" if not filtros.nota_minima }}>Qualquer nota</option>
+                <option value="3" {{ "selected" if filtros.nota_minima == "3" }}>3 estrelas ou mais</option>
+                <option value="4" {{ "selected" if filtros.nota_minima == "4" }}>4 estrelas ou mais</option>
+                <option value="5" {{ "selected" if filtros.nota_minima == "5" }}>Só 5 estrelas</option>
+            </select>
+    </div>
+
+    <div class="campo">
+            <label for="ordenar">Ordenar por</label>
+            <select id="ordenar" name="ordenar">
+                <option value="avaliacao" {{ "selected" if filtros.ordenar == "avaliacao" }}>Melhor avaliação</option>
+                <option value="menor_preco" {{ "selected" if filtros.ordenar == "menor_preco" }}>Menor preço</option>
+                <option value="maior_preco" {{ "selected" if filtros.ordenar == "maior_preco" }}>Maior preço</option>
+            </select>
+    </div>
+
+    <p class="rotulo-grupo">Acessibilidade e preferências</p>
+    <div class="filtros-etiquetas">
+        <label class="filtro-chip">
+            <input type="checkbox" name="somente_mulheres" {{ "checked" if filtros.somente_mulheres }}>
+            <span>Somente mulheres</span>
+        </label>
+        <label class="filtro-chip">
+            <input type="checkbox" name="libras" {{ "checked" if filtros.libras }}>
+            <span>Atende em Libras</span>
+        </label>
+        <label class="filtro-chip">
+            <input type="checkbox" name="neurodivergentes" {{ "checked" if filtros.neurodivergentes }}>
+            <span>Neurodivergentes</span>
+        </label>
+        <label class="filtro-chip">
+            <input type="checkbox" name="pcd" {{ "checked" if filtros.pcd }}>
+            <span>PcD</span>
+        </label>
+        <label class="filtro-chip">
+            <input type="checkbox" name="veiculo_adaptado" {{ "checked" if filtros.veiculo_adaptado }}>
+            <span>Veículo adaptado</span>
+        </label>
+    </div>
+
+    <button type="submit" class="botao botao-primario">Aplicar filtros</button>
+    <a class="botao botao-secundario" href="{{ url_for('busca.buscar', ordenar='avaliacao') }}">Limpar filtros</a>
+</form>
+
+<section class="secao">
+    <p class="contador-resultados">
+        {{ instrutores|length }} {{ "profissional encontrado" if instrutores|length == 1 else "profissionais encontrados" }}
+    </p>
+
+    {% for instrutor in instrutores %}
+        {{ cartao(instrutor) }}
+    {% else %}
+        <div class="card">
+            <h3>Nenhum resultado</h3>
+            <p class="texto-secundario">Tente remover alguns filtros ou ampliar a faixa de preço.</p>
+        </div>
+    {% endfor %}
+</section>
+
+{% endblock %}

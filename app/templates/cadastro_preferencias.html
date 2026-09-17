@@ -1,0 +1,38 @@
+{% extends "base.html" %}
+{% block title %}Preferências · Habilita+{% endblock %}
+{% block content %}
+<div class="card">
+    <div class="cabecalho-tela">
+        <p class="progresso-etapas">Etapa 3 de 4</p>
+        <h1>Preferências</h1>
+        <p class="texto-secundario">Marque o que for importante para você. Dá para ajustar depois na busca.</p>
+    </div>
+
+    <form method="POST">
+        <div class="opcoes-lista">
+            <label class="opcao-cartao">
+                <input type="checkbox" name="prefere_instrutoras_mulheres">
+                <span class="opcao-texto">
+                    <strong>Somente instrutoras mulheres</strong>
+                    <span>A busca vai priorizar profissionais mulheres para você.</span>
+                </span>
+            </label>
+            <label class="opcao-cartao">
+                <input type="checkbox" name="prefere_experiencia_neurodivergencia">
+                <span class="opcao-texto">
+                    <strong>Experiência com pessoas neurodivergentes</strong>
+                    <span>Profissionais preparados para TDAH, autismo, dislexia e outros.</span>
+                </span>
+            </label>
+            <label class="opcao-cartao">
+                <input type="checkbox" name="prefere_experiencia_pcd">
+                <span class="opcao-texto">
+                    <strong>Experiência com pessoas com deficiência</strong>
+                    <span>Profissionais preparados para surdez, baixa visão, mobilidade reduzida e outros.</span>
+                </span>
+            </label>
+        </div>
+        <button type="submit" class="botao botao-primario">Continuar</button>
+    </form>
+</div>
+{% endblock %}

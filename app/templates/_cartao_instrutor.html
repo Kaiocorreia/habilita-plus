@@ -1,0 +1,54 @@
+{% macro iniciais(nome) -%}
+    {{ (nome.split()[0][0] ~ (nome.split()[-1][0] if nome.split()|length > 1 else "")) | upper }}
+{%- endmacro %}
+
+{% macro estrelas(nota) -%}
+    {%- set cheias = nota | round | int -%}
+    <span class="estrelas" aria-hidden="true">{{ "★" * cheias }}{{ "☆" * (5 - cheias) }}</span>
+{%- endmacro %}
+
+{% macro foto(pessoa, classe="avatar") -%}
+    {%- if pessoa["foto_url"] -%}
+        <img class="{{ classe }} avatar-foto" src="{{ url_for('static', filename=pessoa['foto_url']) }}" alt="Foto de {{ pessoa['nome'] }}">
+    {%- else -%}
+        <div class="{{ classe }}" aria-hidden="true">{{ iniciais(pessoa["nome"]) }}</div>
+    {%- endif -%}
+{%- endmacro %}
+
+{% macro cartao(instrutor) %}
+<article class="cartao-instrutor">
+    <div class="instrutor-topo">
+        {{ foto(instrutor) }}
+        <div class="instrutor-identidade">
+            <h3>
+                {{ instrutor["nome"] }}
+                {% if instrutor["verificado"] %}<span class="selo-verificado" title="Perfil verificado">✓</span>{% endif %}
+            </h3>
+            {% if instrutor["total_avaliacoes"] %}
+                <p class="instrutor-nota">
+                    {{ estrelas(instrutor["media_estrelas"]) }}
+                    <strong>{{ "%.1f"|format(instrutor["media_estrelas"]) }}</strong>
+                    <span class="texto-secundario">({{ instrutor["total_avaliacoes"] }})</span>
+                </p>
+            {% else %}
+                <p class="texto-secundario">Sem avaliações ainda</p>
+            {% endif %}
+            <p class="texto-secundario">{{ instrutor["regiao_atuacao"] or instrutor["cidade"] }}</p>
+        </div>
+    </div>
+
+    <div class="instrutor-selos">
+        <span class="etiqueta etiqueta-categoria">CNH {{ instrutor["categorias_cnh"] }}</span>
+        {% if instrutor["atende_libras"] %}<span class="etiqueta etiqueta-libras">Atende em Libras</span>{% endif %}
+        {% if instrutor["somente_mulheres"] %}<span class="etiqueta etiqueta-mulher">Instrutora mulher</span>{% endif %}
+        {% if instrutor["atende_neurodivergentes"] %}<span class="etiqueta etiqueta-neuro">Neurodivergentes</span>{% endif %}
+        {% if instrutor["atende_pcd"] %}<span class="etiqueta etiqueta-pcd">PcD</span>{% endif %}
+        {% if instrutor["veiculo_adaptado_disponivel"] %}<span class="etiqueta etiqueta-veiculo">Veículo adaptado</span>{% endif %}
+    </div>
+
+    <div class="instrutor-rodape">
+        <p class="instrutor-preco"><strong>R$ {{ "%.2f"|format(instrutor["valor_aula"]) | replace(".", ",") }}</strong> <span class="texto-secundario">/ aula</span></p>
+        <a class="botao-pequeno" href="{{ url_for('instrutores.perfil', instrutor_id=instrutor['id']) }}">Ver perfil</a>
+    </div>
+</article>
+{% endmacro %}

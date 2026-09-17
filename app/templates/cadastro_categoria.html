@@ -1,0 +1,23 @@
+{% extends "base.html" %}
+{% block title %}Categorias da CNH · Habilita+{% endblock %}
+{% block content %}
+<div class="card">
+    <div class="cabecalho-tela">
+        <p class="progresso-etapas">Etapa 2 de 4</p>
+        <h1>Categorias pretendidas</h1>
+        <p class="texto-secundario">Quais categorias de CNH você quer tirar? Pode marcar mais de uma.</p>
+    </div>
+
+    <form method="POST">
+        <div class="opcoes-grade">
+            {% for categoria in categorias %}
+            <label>
+                <input type="checkbox" name="categorias" value="{{ categoria }}">
+                {{ categoria }}
+            </label>
+            {% endfor %}
+        </div>
+        <button type="submit" class="botao botao-primario">Continuar</button>
+    </form>
+</div>
+{% endblock %}
