@@ -73,6 +73,14 @@ def home():
         "SELECT nome, tipo, cidade FROM usuarios WHERE id = ?",
         (session["usuario_id"],),
     ).fetchone()
+
+    # O cookie pode apontar para um usuário que não existe mais (conta apagada ou
+    # banco recriado, o que muda os IDs). Sem isso, o template quebraria com 500.
+    if usuario is None:
+        conexao.close()
+        session.clear()
+        return redirect(url_for("auth.login"))
+
     instrutores = conexao.execute(CONSULTA_INSTRUTORES).fetchall()
 
     minhas_aulas = []
