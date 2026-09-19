@@ -1,5 +1,5 @@
 {% extends "base.html" %}
-{% from "_cartao_instrutor.html" import cartao %}
+{% from "_cartao_instrutor.html" import cartao, foto %}
 {% block title %}Início · Habilita+{% endblock %}
 {% block content %}
 
@@ -8,50 +8,107 @@
         <p class="texto-secundario">Olá,</p>
         <h1 class="titulo-saudacao">{{ usuario["nome"].split()[0] }}</h1>
     </div>
-    <a class="link-sair" href="{{ url_for('auth.logout') }}">Sair</a>
 </header>
 
-<a class="busca-atalho" href="{{ url_for('busca.buscar', cidade=usuario['cidade']) }}">
-    <span aria-hidden="true">🔎</span>
-    <span>Buscar instrutores {{ "em " ~ usuario["cidade"] if usuario["cidade"] }}</span>
-</a>
+{% if usuario["tipo"] == "candidato" %}
 
-{% if minhas_aulas %}
-<section class="secao">
-    <div class="secao-cabecalho">
-        <h2>Minhas aulas</h2>
-    </div>
+    <a class="busca-atalho" href="{{ url_for('busca.buscar', cidade=usuario['cidade']) }}">
+        <span aria-hidden="true">🔎</span>
+        <span>Buscar instrutores {{ "em " ~ usuario["cidade"] if usuario["cidade"] }}</span>
+    </a>
 
-    {% for aula in minhas_aulas %}
-    <article class="cartao-aula">
-        <div class="aula-info">
-            <strong>{{ aula["nome_instrutor"] }}</strong>
-            <p class="texto-secundario">{{ aula["data_formatada"] }} às {{ aula["horario"] }}</p>
-            <span class="status status-{{ aula['status'] }}">{{ aula["status"]|capitalize }}</span>
+    {% if minhas_aulas %}
+    <section class="secao">
+        <div class="secao-cabecalho">
+            <h2>Minhas aulas</h2>
+            <a href="{{ url_for('agendamentos.minhas_aulas') }}">Ver todas</a>
         </div>
-        {% if aula["status"] == "concluido" and not aula["avaliacao_id"] %}
-            <a class="botao-pequeno" href="{{ url_for('avaliacoes.avaliar', agendamento_id=aula['id']) }}">Avaliar</a>
-        {% elif aula["avaliacao_id"] %}
-            <span class="texto-secundario aula-avaliada">Avaliada ✓</span>
-        {% endif %}
-    </article>
-    {% endfor %}
-</section>
+
+        {% for aula in minhas_aulas %}
+        <article class="cartao-aula">
+            <div class="aula-info">
+                <strong>{{ aula["nome_instrutor"] }}</strong>
+                <p class="texto-secundario">{{ aula["data_formatada"] }} às {{ aula["horario"] }}</p>
+                <span class="status status-{{ aula['status'] }}">{{ aula["status"]|capitalize }}</span>
+            </div>
+            {% if aula["status"] == "concluido" and not aula["avaliacao_id"] %}
+                <a class="botao-pequeno" href="{{ url_for('avaliacoes.avaliar', agendamento_id=aula['id']) }}">Avaliar</a>
+            {% elif aula["avaliacao_id"] %}
+                <span class="texto-secundario aula-avaliada">Avaliada ✓</span>
+            {% endif %}
+        </article>
+        {% endfor %}
+    </section>
+    {% endif %}
+
+    <section class="secao">
+        <div class="secao-cabecalho">
+            <h2>Instrutores em destaque</h2>
+            <a href="{{ url_for('busca.buscar', ordenar='avaliacao') }}">Ver todos</a>
+        </div>
+
+        {% for instrutor in instrutores %}
+            {{ cartao(instrutor) }}
+        {% else %}
+            <div class="card">
+                <p class="texto-secundario">Nenhum instrutor cadastrado ainda.</p>
+            </div>
+        {% endfor %}
+    </section>
+
+{% else %}
+
+    {% if resumo and not resumo["verificado"] %}
+    <div class="aviso-analise">
+        <span aria-hidden="true">⏳</span>
+        <span>
+            Seu perfil está <strong>em análise</strong>. Ele já aparece nas buscas com esse aviso,
+            e ganha o selo de verificado assim que a equipe confirmar seus documentos.
+        </span>
+    </div>
+    {% endif %}
+
+    {% if resumo %}
+    <div class="painel-numeros">
+        <div class="painel-numero">
+            <strong>{{ "%.1f"|format(resumo["media_estrelas"]) if resumo["total_avaliacoes"] else "—" }}</strong>
+            <span>avaliação</span>
+        </div>
+        <div class="painel-numero">
+            <strong>{{ resumo["aulas_concluidas"] }}</strong>
+            <span>aulas dadas</span>
+        </div>
+        <div class="painel-numero">
+            <strong>R$ {{ "%.0f"|format(resumo["valor_aula"]) }}</strong>
+            <span>por aula</span>
+        </div>
+    </div>
+    {% endif %}
+
+    <section class="secao">
+        <div class="secao-cabecalho">
+            <h2>Próximas aulas</h2>
+            {% if resumo %}
+            <a href="{{ url_for('instrutores.perfil', instrutor_id=resumo['id']) }}">Meu perfil</a>
+            {% endif %}
+        </div>
+
+        {% for aula in agenda %}
+        <article class="cartao-aula">
+            <div class="aula-info">
+                <strong>{{ aula["nome_candidato"] }}</strong>
+                <p class="texto-secundario">{{ aula["data_formatada"] }} às {{ aula["horario"] }}</p>
+                <span class="status status-{{ aula['status'] }}">{{ aula["status"]|capitalize }}</span>
+            </div>
+            <span class="aula-avaliada">R$ {{ "%.2f"|format(aula["valor"] + aula["valor_locacao"]) | replace(".", ",") }}</span>
+        </article>
+        {% else %}
+        <div class="card estado-vazio">
+            <p class="texto-secundario">Nenhuma aula marcada por enquanto.</p>
+        </div>
+        {% endfor %}
+    </section>
+
 {% endif %}
-
-<section class="secao">
-    <div class="secao-cabecalho">
-        <h2>Instrutores em destaque</h2>
-        <a href="{{ url_for('busca.buscar', ordenar='avaliacao') }}">Ver todos</a>
-    </div>
-
-    {% for instrutor in instrutores %}
-        {{ cartao(instrutor) }}
-    {% else %}
-        <div class="card">
-            <p class="texto-secundario">Nenhum instrutor verificado disponível no momento.</p>
-        </div>
-    {% endfor %}
-</section>
 
 {% endblock %}

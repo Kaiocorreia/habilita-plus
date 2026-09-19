@@ -1162,6 +1162,204 @@ a.dia-escolhido:hover {
     outline-offset: 1px;
 }
 
+/* Navegação inferior fixa */
+
+.nav-inferior {
+    position: fixed;
+    bottom: 0;
+    left: 50%;
+    transform: translateX(-50%);
+    width: 100%;
+    max-width: 420px;
+    display: flex;
+    background: var(--branco);
+    border-top: 1px solid var(--borda);
+    padding-bottom: env(safe-area-inset-bottom);
+    z-index: 20;
+}
+
+.nav-inferior a {
+    flex: 1;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 2px;
+    padding: 10px 0 12px;
+    font-size: 11px;
+    font-weight: 600;
+    color: var(--texto-secundario);
+    text-decoration: none;
+}
+
+.nav-inferior a.ativo {
+    color: var(--azul-primario);
+}
+
+.nav-icone {
+    font-size: 19px;
+    line-height: 1;
+}
+
+body:has(.nav-inferior) .app-shell {
+    padding-bottom: 88px;
+}
+
+body:has(.nav-inferior) .barra-acao {
+    bottom: 64px;
+    margin-bottom: 0;
+}
+
+/* Minhas aulas */
+
+.cartao-aula-detalhe {
+    background: var(--branco);
+    border-radius: var(--radius);
+    box-shadow: var(--sombra);
+    padding: 16px;
+    margin-bottom: 12px;
+}
+
+.aula-cabecalho {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    margin-bottom: 12px;
+}
+
+.avatar-pequeno {
+    width: 38px;
+    height: 38px;
+    font-size: 13px;
+}
+
+.aula-identidade {
+    display: flex;
+    flex-direction: column;
+    align-items: flex-start;
+    gap: 4px;
+}
+
+.aula-identidade strong {
+    font-size: 15px;
+}
+
+.aula-dados {
+    margin: 0;
+    border-top: 1px solid var(--borda);
+    padding-top: 10px;
+}
+
+.aula-dados div {
+    display: flex;
+    justify-content: space-between;
+    gap: 12px;
+    padding: 4px 0;
+}
+
+.aula-dados dt {
+    font-size: 13px;
+    color: var(--texto-secundario);
+}
+
+.aula-dados dd {
+    margin: 0;
+    font-size: 13px;
+    font-weight: 600;
+    text-align: right;
+}
+
+.aula-acoes {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 10px;
+    margin-top: 12px;
+    padding-top: 12px;
+    border-top: 1px solid var(--borda);
+}
+
+.aula-acoes form {
+    margin: 0;
+}
+
+.botao-texto {
+    background: none;
+    border: none;
+    padding: 0;
+    font-size: 14px;
+    font-weight: 600;
+    font-family: inherit;
+    color: var(--azul-primario);
+    text-decoration: none;
+    cursor: pointer;
+}
+
+.botao-texto-perigo {
+    color: var(--erro);
+}
+
+.estado-vazio {
+    text-align: center;
+}
+
+.estado-vazio p {
+    margin-top: 0;
+}
+
+/* Perfil em análise */
+
+.selo-analise {
+    display: inline-block;
+    font-size: 10px;
+    font-weight: 700;
+    padding: 2px 7px;
+    border-radius: 999px;
+    background: #FEF3C7;
+    color: #92400E;
+    vertical-align: middle;
+    text-transform: uppercase;
+    letter-spacing: 0.02em;
+}
+
+.aviso-analise {
+    display: flex;
+    gap: 10px;
+    background: #FEF3C7;
+    border-radius: 12px;
+    padding: 12px 14px;
+    margin-bottom: 20px;
+    font-size: 13px;
+    color: #92400E;
+}
+
+/* Painel do instrutor */
+
+.painel-numeros {
+    display: grid;
+    grid-template-columns: repeat(3, 1fr);
+    gap: 10px;
+    margin-bottom: 24px;
+}
+
+.painel-numero {
+    background: var(--branco);
+    border-radius: var(--radius);
+    box-shadow: var(--sombra);
+    padding: 14px 10px;
+    text-align: center;
+}
+
+.painel-numero strong {
+    display: block;
+    font-size: 20px;
+    color: var(--azul-primario);
+}
+
+.painel-numero span {
+    font-size: 11px;
+    color: var(--texto-secundario);
+}
+
 /* Mensagens flash */
 
 .flash-container {

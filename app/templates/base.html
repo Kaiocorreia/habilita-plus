@@ -32,6 +32,29 @@
         {% block content %}{% endblock %}
     </div>
 
+    {% if session.get("usuario_id") %}
+    <nav class="nav-inferior" aria-label="Navegação principal">
+        <a href="{{ url_for('main.home') }}" class="{{ 'ativo' if request.endpoint == 'main.home' }}">
+            <span class="nav-icone" aria-hidden="true">⌂</span>
+            <span>Início</span>
+        </a>
+        {% if session.get("usuario_tipo") == "candidato" %}
+        <a href="{{ url_for('busca.buscar') }}" class="{{ 'ativo' if request.endpoint == 'busca.buscar' }}">
+            <span class="nav-icone" aria-hidden="true">⌕</span>
+            <span>Buscar</span>
+        </a>
+        <a href="{{ url_for('agendamentos.minhas_aulas') }}" class="{{ 'ativo' if request.endpoint == 'agendamentos.minhas_aulas' }}">
+            <span class="nav-icone" aria-hidden="true">▤</span>
+            <span>Aulas</span>
+        </a>
+        {% endif %}
+        <a href="{{ url_for('auth.logout') }}">
+            <span class="nav-icone" aria-hidden="true">⏻</span>
+            <span>Sair</span>
+        </a>
+    </nav>
+    {% endif %}
+
     <script>
         if ("serviceWorker" in navigator) {
             window.addEventListener("load", function () {

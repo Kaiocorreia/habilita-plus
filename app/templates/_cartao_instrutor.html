@@ -22,7 +22,11 @@
         <div class="instrutor-identidade">
             <h3>
                 {{ instrutor["nome"] }}
-                {% if instrutor["verificado"] %}<span class="selo-verificado" title="Perfil verificado">✓</span>{% endif %}
+                {% if instrutor["verificado"] %}
+                    <span class="selo-verificado" title="Perfil verificado">✓</span>
+                {% else %}
+                    <span class="selo-analise" title="Perfil aguardando verificação">Em análise</span>
+                {% endif %}
             </h3>
             {% if instrutor["total_avaliacoes"] %}
                 <p class="instrutor-nota">

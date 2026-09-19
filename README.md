@@ -178,8 +178,10 @@ desatualizado a cada nova avaliação; calculando na hora, é impossível ficar 
 | 6 | Cadastro — preferências | `/cadastro/preferencias` |
 | 7 | Cadastro — acessibilidade | `/cadastro/acessibilidade` |
 | 8 | Cadastro — perfil profissional | `/cadastro/instrutor` |
-| 9 | Home (destaques e minhas aulas) | `/home` |
+| 9 | Home do candidato (destaques e minhas aulas) | `/home` |
+| 9b | Painel do instrutor (agenda e indicadores) | `/home` |
 | 10 | Busca com filtros | `/busca` |
+| 10b | Minhas aulas (próximas, histórico, cancelamento) | `/minhas-aulas` |
 | 11 | Perfil do instrutor | `/instrutor/<id>` |
 | 12 | Agendamento (calendário, horário, veículo) | `/instrutor/<id>/agendar` |
 | 13 | Confirmação | `/agendamento/confirmar` |
@@ -382,10 +384,11 @@ Pontos deixados em aberto conscientemente, por estarem fora do escopo desta fase
 - **Concorrência no agendamento.** O horário é checado ao montar a tela e de novo ao
   gravar, o que fecha quase toda a janela de condição de corrida. A garantia definitiva
   seria uma constraint `UNIQUE (instrutor_id, data, horario)`.
-- **Sem painel do instrutor.** O profissional consegue se cadastrar e aparecer nas buscas,
-  mas ainda não tem tela para gerenciar a própria agenda.
-- **Verificação de perfil é manual.** A coluna `verificado` existe e filtra as buscas, mas
-  ainda não há fluxo de aprovação — no seed ela é definida diretamente.
+- **Painel do instrutor é somente leitura.** Ele vê a própria agenda, a nota e o total de
+  aulas dadas, mas ainda não edita o perfil nem define horários de disponibilidade.
+- **Verificação de perfil não tem fluxo de aprovação.** Perfis novos aparecem nas buscas
+  marcados como *Em análise* e ordenados depois dos verificados; a promoção para
+  `verificado = 1` precisa ser feita direto no banco, sem tela de administração.
 - **Pagamento fora do app**, combinado diretamente com o profissional.
 
 ## Créditos das imagens

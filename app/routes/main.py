@@ -4,6 +4,9 @@ from database.db import get_connection
 
 main_bp = Blueprint("main", __name__)
 
+# Perfis não verificados também aparecem, mas depois dos verificados e com um selo
+# "Em análise" no cartão. Se ficassem escondidos, quem acabou de se cadastrar como
+# instrutor não se veria em lugar nenhum do site.
 CONSULTA_INSTRUTORES = """
     SELECT i.id,
            u.nome,
@@ -23,15 +26,15 @@ CONSULTA_INSTRUTORES = """
     FROM instrutores i
     JOIN usuarios u ON u.id = i.usuario_id
     LEFT JOIN avaliacoes a ON a.instrutor_id = i.id
-    WHERE i.verificado = 1
     GROUP BY i.id
-    ORDER BY (media_estrelas IS NULL), media_estrelas DESC, total_avaliacoes DESC
+    ORDER BY i.verificado DESC,
+             (media_estrelas IS NULL), media_estrelas DESC, total_avaliacoes DESC
     LIMIT 5
 """
 
-
 CONSULTA_MINHAS_AULAS = """
     SELECT ag.id,
+           ag.data,
            ag.horario,
            ag.status,
            ag.valor,
@@ -47,7 +50,40 @@ CONSULTA_MINHAS_AULAS = """
     LEFT JOIN avaliacoes av ON av.agendamento_id = ag.id
     WHERE ag.candidato_id = ?
     ORDER BY ag.data DESC
+    LIMIT 3
+"""
+
+CONSULTA_AGENDA_INSTRUTOR = """
+    SELECT ag.id,
+           ag.horario,
+           ag.status,
+           ag.valor,
+           ag.valor_locacao,
+           strftime('%d/%m/%Y', ag.data) AS data_formatada,
+           u.nome AS nome_candidato,
+           u.foto_url
+    FROM agendamentos ag
+    JOIN instrutores i ON i.id = ag.instrutor_id
+    JOIN usuarios u ON u.id = ag.candidato_id
+    WHERE i.usuario_id = ?
+      AND ag.status IN ('agendado', 'confirmado')
+      AND ag.data >= date('now')
+    ORDER BY ag.data ASC, ag.horario ASC
     LIMIT 5
+"""
+
+CONSULTA_RESUMO_INSTRUTOR = """
+    SELECT i.id,
+           i.verificado,
+           i.valor_aula,
+           ROUND(AVG(av.nota), 1) AS media_estrelas,
+           COUNT(av.id)           AS total_avaliacoes,
+           (SELECT COUNT(*) FROM agendamentos
+             WHERE instrutor_id = i.id AND status = 'concluido') AS aulas_concluidas
+    FROM instrutores i
+    LEFT JOIN avaliacoes av ON av.instrutor_id = i.id
+    WHERE i.usuario_id = ?
+    GROUP BY i.id
 """
 
 
@@ -81,11 +117,17 @@ def home():
         session.clear()
         return redirect(url_for("auth.login"))
 
-    instrutores = conexao.execute(CONSULTA_INSTRUTORES).fetchall()
-
     minhas_aulas = []
+    agenda = []
+    resumo = None
+
     if usuario["tipo"] == "candidato":
+        instrutores = conexao.execute(CONSULTA_INSTRUTORES).fetchall()
         minhas_aulas = conexao.execute(CONSULTA_MINHAS_AULAS, (session["usuario_id"],)).fetchall()
+    else:
+        instrutores = []
+        agenda = conexao.execute(CONSULTA_AGENDA_INSTRUTOR, (session["usuario_id"],)).fetchall()
+        resumo = conexao.execute(CONSULTA_RESUMO_INSTRUTOR, (session["usuario_id"],)).fetchone()
 
     conexao.close()
 
@@ -94,4 +136,6 @@ def home():
         usuario=usuario,
         instrutores=instrutores,
         minhas_aulas=minhas_aulas,
+        agenda=agenda,
+        resumo=resumo,
     )

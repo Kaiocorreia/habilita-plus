@@ -1,0 +1,68 @@
+{% extends "base.html" %}
+{% from "_cartao_instrutor.html" import foto %}
+{% block title %}Minhas aulas · Habilita+{% endblock %}
+
+{% macro cartao_aula(aula, permite_cancelar=false) %}
+<article class="cartao-aula-detalhe">
+    <div class="aula-cabecalho">
+        {{ foto(aula, "avatar avatar-pequeno") }}
+        <div class="aula-identidade">
+            <strong>{{ aula["nome_instrutor"] }}</strong>
+            <span class="status status-{{ aula['status'] }}">{{ aula["status"]|capitalize }}</span>
+        </div>
+    </div>
+
+    <dl class="aula-dados">
+        <div><dt>Data</dt><dd>{{ aula["data_formatada"] }} às {{ aula["horario"] }}</dd></div>
+        <div><dt>Veículo</dt><dd>{{ aula["marca"] ~ " " ~ aula["modelo"] if aula["marca"] else "Veículo próprio" }}</dd></div>
+        <div><dt>Total</dt><dd>R$ {{ "%.2f"|format(aula["valor"] + aula["valor_locacao"]) | replace(".", ",") }}</dd></div>
+    </dl>
+
+    <div class="aula-acoes">
+        <a class="botao-texto" href="{{ url_for('instrutores.perfil', instrutor_id=aula['instrutor_id']) }}">Ver perfil</a>
+
+        {% if permite_cancelar %}
+            <form method="POST" action="{{ url_for('agendamentos.cancelar', agendamento_id=aula['id']) }}"
+                  onsubmit="return confirm('Cancelar a aula de {{ aula['data_formatada'] }} às {{ aula['horario'] }}?');">
+                <button type="submit" class="botao-texto botao-texto-perigo">Cancelar aula</button>
+            </form>
+        {% elif aula["status"] == "concluido" and not aula["avaliacao_id"] %}
+            <a class="botao-pequeno" href="{{ url_for('avaliacoes.avaliar', agendamento_id=aula['id']) }}">Avaliar</a>
+        {% elif aula["avaliacao_id"] %}
+            <span class="texto-secundario">Avaliada ✓</span>
+        {% endif %}
+    </div>
+</article>
+{% endmacro %}
+
+{% block content %}
+
+<header class="cabecalho-app">
+    <div>
+        <a class="link-voltar" href="{{ url_for('main.home') }}">← Início</a>
+        <h1 class="titulo-saudacao">Minhas aulas</h1>
+    </div>
+</header>
+
+<section class="secao">
+    <h2 class="titulo-secao">Próximas ({{ proximas|length }})</h2>
+    {% for aula in proximas %}
+        {{ cartao_aula(aula, permite_cancelar=true) }}
+    {% else %}
+        <div class="card estado-vazio">
+            <p class="texto-secundario">Você não tem aulas marcadas.</p>
+            <a class="botao botao-primario" href="{{ url_for('busca.buscar') }}">Encontrar um instrutor</a>
+        </div>
+    {% endfor %}
+</section>
+
+{% if anteriores %}
+<section class="secao">
+    <h2 class="titulo-secao">Histórico ({{ anteriores|length }})</h2>
+    {% for aula in anteriores %}
+        {{ cartao_aula(aula) }}
+    {% endfor %}
+</section>
+{% endif %}
+
+{% endblock %}

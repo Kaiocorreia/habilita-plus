@@ -193,6 +193,84 @@ def confirmar():
     )
 
 
+CONSULTA_MINHAS_AULAS_COMPLETA = """
+    SELECT ag.id,
+           ag.data,
+           ag.horario,
+           ag.status,
+           ag.valor,
+           ag.valor_locacao,
+           strftime('%d/%m/%Y', ag.data) AS data_formatada,
+           ag.data >= date('now')        AS e_futura,
+           u.nome  AS nome_instrutor,
+           u.foto_url,
+           i.id    AS instrutor_id,
+           av.id   AS avaliacao_id,
+           v.marca, v.modelo
+    FROM agendamentos ag
+    JOIN instrutores i ON i.id = ag.instrutor_id
+    JOIN usuarios u ON u.id = i.usuario_id
+    LEFT JOIN avaliacoes av ON av.agendamento_id = ag.id
+    LEFT JOIN veiculos v ON v.id = ag.veiculo_id
+    WHERE ag.candidato_id = ?
+    ORDER BY ag.data DESC, ag.horario DESC
+"""
+
+
+@agendamentos_bp.route("/minhas-aulas")
+def minhas_aulas():
+    if "usuario_id" not in session:
+        return redirect(url_for("auth.login"))
+
+    if session.get("usuario_tipo") != "candidato":
+        return redirect(url_for("main.home"))
+
+    conexao = get_connection()
+    aulas = conexao.execute(CONSULTA_MINHAS_AULAS_COMPLETA, (session["usuario_id"],)).fetchall()
+    conexao.close()
+
+    proximas = [a for a in aulas if a["e_futura"] and a["status"] in ("agendado", "confirmado")]
+    anteriores = [a for a in aulas if a not in proximas]
+
+    return render_template("minhas_aulas.html", proximas=proximas, anteriores=anteriores)
+
+
+@agendamentos_bp.route("/agendamento/<int:agendamento_id>/cancelar", methods=["POST"])
+def cancelar(agendamento_id):
+    if "usuario_id" not in session:
+        return redirect(url_for("auth.login"))
+
+    conexao = get_connection()
+    aula = conexao.execute(
+        "SELECT candidato_id, status, data FROM agendamentos WHERE id = ?",
+        (agendamento_id,),
+    ).fetchone()
+
+    if aula is None or aula["candidato_id"] != session["usuario_id"]:
+        conexao.close()
+        abort(404)
+
+    if aula["status"] not in ("agendado", "confirmado"):
+        conexao.close()
+        flash("Essa aula não pode mais ser cancelada.", "erro")
+        return redirect(url_for("agendamentos.minhas_aulas"))
+
+    if date.fromisoformat(aula["data"]) < date.today():
+        conexao.close()
+        flash("Não é possível cancelar uma aula que já aconteceu.", "erro")
+        return redirect(url_for("agendamentos.minhas_aulas"))
+
+    conexao.execute(
+        "UPDATE agendamentos SET status = 'cancelado' WHERE id = ?",
+        (agendamento_id,),
+    )
+    conexao.commit()
+    conexao.close()
+
+    flash("Aula cancelada. O horário voltou a ficar disponível.", "sucesso")
+    return redirect(url_for("agendamentos.minhas_aulas"))
+
+
 @agendamentos_bp.route("/agendamento/<int:agendamento_id>/sucesso")
 def sucesso(agendamento_id):
     if "usuario_id" not in session:

@@ -7,11 +7,22 @@
     <a class="link-voltar" href="{{ url_for('busca.buscar') }}">← Voltar</a>
 </header>
 
+{% if not instrutor["verificado"] %}
+<div class="aviso-analise">
+    <span aria-hidden="true">⏳</span>
+    <span>Este perfil ainda está em análise pela equipe do Habilita+ e não recebeu o selo de verificado.</span>
+</div>
+{% endif %}
+
 <div class="card perfil-cabecalho">
     {{ foto(instrutor, "avatar avatar-grande") }}
     <h1>
         {{ instrutor["nome"] }}
-        {% if instrutor["verificado"] %}<span class="selo-verificado" title="Perfil verificado">✓</span>{% endif %}
+        {% if instrutor["verificado"] %}
+            <span class="selo-verificado" title="Perfil verificado">✓</span>
+        {% else %}
+            <span class="selo-analise">Em análise</span>
+        {% endif %}
     </h1>
     <p class="texto-secundario">{{ instrutor["regiao_atuacao"] or instrutor["cidade"] }}</p>
 

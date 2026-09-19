@@ -27,7 +27,7 @@ SELECT_BASE = """
 """
 
 ORDENACOES = {
-    "avaliacao": "(media_estrelas IS NULL), media_estrelas DESC, total_avaliacoes DESC",
+    "avaliacao": "i.verificado DESC, (media_estrelas IS NULL), media_estrelas DESC, total_avaliacoes DESC",
     "menor_preco": "i.valor_aula ASC",
     "maior_preco": "i.valor_aula DESC",
 }
@@ -78,7 +78,9 @@ def ler_filtros_do_formulario():
 
 
 def montar_consulta(filtros):
-    condicoes = ["i.verificado = 1"]
+    # Perfis ainda não verificados também aparecem (marcados como "Em análise"),
+    # senão quem acabou de se cadastrar como instrutor ficaria invisível no site.
+    condicoes = ["1 = 1"]
     parametros = []
 
     if filtros["cidade"]:
