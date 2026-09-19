@@ -1,16 +1,18 @@
 :root {
     --azul-primario: #2563EB;
-    --azul-escuro: #1E40AF;
-    --azul-claro: #DBEAFE;
-    --fundo: #F3F4F6;
+    --azul-escuro: #1D4ED8;
+    --azul-claro: #EFF4FF;
+    --fundo: #FFFFFF;
+    --superficie: #F8FAFC;
     --branco: #FFFFFF;
-    --texto: #111827;
-    --texto-secundario: #6B7280;
+    --texto: #0B1220;
+    --texto-secundario: #64748B;
     --erro: #DC2626;
-    --sucesso: #16A34A;
-    --borda: #E5E7EB;
-    --radius: 16px;
-    --sombra: 0 4px 12px rgba(17, 24, 39, 0.08);
+    --sucesso: #15803D;
+    --borda: #E8EDF3;
+    --borda-forte: #D3DCE6;
+    --radius: 14px;
+    --sombra: 0 1px 2px rgba(11, 18, 32, 0.04);
 }
 
 * {
@@ -23,6 +25,7 @@ html, body {
     font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Arial, sans-serif;
     color: var(--texto);
     background: var(--fundo);
+    -webkit-font-smoothing: antialiased;
 }
 
 .app-shell {
@@ -37,7 +40,9 @@ html, body {
 
 h1, h2, h3 {
     margin: 0 0 8px;
-    line-height: 1.25;
+    line-height: 1.18;
+    letter-spacing: -0.02em;
+    font-weight: 800;
 }
 
 p {
@@ -47,6 +52,12 @@ p {
 .texto-secundario {
     color: var(--texto-secundario);
     font-size: 14px;
+}
+
+hr, .divisor {
+    border: none;
+    border-top: 1px solid var(--borda);
+    margin: 20px 0;
 }
 
 /* Splash */
@@ -82,9 +93,9 @@ p {
 
 .card {
     background: var(--branco);
+    border: 1px solid var(--borda);
     border-radius: var(--radius);
-    box-shadow: var(--sombra);
-    padding: 24px 20px;
+    padding: 22px 20px;
 }
 
 .cabecalho-tela {
@@ -121,10 +132,10 @@ p {
 .campo input[type="number"],
 .campo select {
     width: 100%;
-    padding: 12px 14px;
+    padding: 15px 14px;
     font-size: 16px;
-    border: 1px solid var(--borda);
-    border-radius: 10px;
+    border: 1px solid var(--borda-forte);
+    border-radius: 12px;
     background: var(--branco);
     color: var(--texto);
 }
@@ -256,14 +267,20 @@ p {
 .botao {
     display: block;
     width: 100%;
-    padding: 14px;
+    padding: 17px 16px;
     border-radius: 12px;
     text-align: center;
     font-size: 16px;
     font-weight: 700;
+    letter-spacing: -0.01em;
     text-decoration: none;
     border: none;
     cursor: pointer;
+    transition: background .15s ease, transform .06s ease;
+}
+
+.botao:active {
+    transform: scale(.985);
 }
 
 .botao-primario {
@@ -277,9 +294,13 @@ p {
 
 .botao-secundario {
     background: var(--branco);
-    color: var(--azul-primario);
-    border: 1px solid var(--azul-primario);
+    color: var(--texto);
+    border: 1px solid var(--borda-forte);
     margin-top: 10px;
+}
+
+.botao-secundario:hover {
+    background: var(--superficie);
 }
 
 .rodape-acao {
@@ -290,6 +311,9 @@ p {
 }
 
 .rodape-acao a {
+    display: inline-flex;
+    align-items: center;
+    min-height: 44px;
     color: var(--azul-primario);
     font-weight: 600;
     text-decoration: none;
@@ -309,7 +333,7 @@ p {
 }
 
 .titulo-saudacao {
-    font-size: 24px;
+    font-size: 30px;
     margin: 0;
 }
 
@@ -324,18 +348,22 @@ p {
     display: flex;
     align-items: center;
     gap: 10px;
-    padding: 14px 16px;
-    background: var(--branco);
+    padding: 16px 16px;
+    background: var(--superficie);
     border: 1px solid var(--borda);
     border-radius: 12px;
     color: var(--texto-secundario);
     text-decoration: none;
     font-size: 15px;
-    margin-bottom: 24px;
+    margin-bottom: 28px;
+}
+
+.busca-atalho:hover {
+    border-color: var(--borda-forte);
 }
 
 .secao {
-    margin-bottom: 24px;
+    margin-bottom: 32px;
 }
 
 .secao-cabecalho {
@@ -346,11 +374,15 @@ p {
 }
 
 .secao-cabecalho h2 {
-    font-size: 18px;
+    font-size: 19px;
     margin: 0;
 }
 
 .secao-cabecalho a {
+    display: inline-flex;
+    align-items: center;
+    min-height: 44px;
+    padding: 0 2px;
     font-size: 14px;
     font-weight: 600;
     color: var(--azul-primario);
@@ -360,6 +392,9 @@ p {
 /* Filtros da busca */
 
 .link-voltar {
+    display: inline-flex;
+    align-items: center;
+    min-height: 44px;
     font-size: 14px;
     font-weight: 600;
     color: var(--azul-primario);
@@ -434,10 +469,15 @@ p {
 
 .cartao-instrutor {
     background: var(--branco);
+    border: 1px solid var(--borda);
     border-radius: var(--radius);
-    box-shadow: var(--sombra);
-    padding: 16px;
-    margin-bottom: 14px;
+    padding: 18px 16px;
+    margin-bottom: 12px;
+    transition: border-color .15s ease;
+}
+
+.cartao-instrutor:hover {
+    border-color: var(--borda-forte);
 }
 
 .instrutor-topo {
@@ -465,8 +505,8 @@ p {
 }
 
 .instrutor-identidade h3 {
-    font-size: 16px;
-    margin: 0 0 2px;
+    font-size: 17px;
+    margin: 0 0 3px;
 }
 
 .instrutor-identidade p {
@@ -494,7 +534,7 @@ p {
 }
 
 .estrelas {
-    color: #F59E0B;
+    color: #B45309;
     letter-spacing: 1px;
     font-size: 13px;
 }
@@ -559,13 +599,19 @@ p {
 }
 
 .botao-pequeno {
-    padding: 8px 16px;
-    border-radius: 10px;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    min-height: 44px;
+    padding: 0 20px;
+    border-radius: 12px;
     background: var(--azul-primario);
     color: var(--branco);
     font-size: 14px;
     font-weight: 700;
     text-decoration: none;
+    border: none;
+    cursor: pointer;
 }
 
 .botao-pequeno:hover {
@@ -621,8 +667,8 @@ p {
 }
 
 .titulo-secao {
-    font-size: 17px;
-    margin-bottom: 10px;
+    font-size: 19px;
+    margin-bottom: 12px;
 }
 
 .lista-atributos {
@@ -681,10 +727,10 @@ p {
     gap: 14px;
     align-items: center;
     background: var(--branco);
+    border: 1px solid var(--borda);
     border-radius: var(--radius);
-    box-shadow: var(--sombra);
     padding: 12px;
-    margin-bottom: 12px;
+    margin-bottom: 10px;
 }
 
 .veiculo-imagem {
@@ -803,8 +849,8 @@ p {
     display: flex;
     align-items: center;
     justify-content: center;
-    width: 34px;
-    height: 34px;
+    width: 44px;
+    height: 44px;
     border-radius: 50%;
     background: var(--fundo);
     color: var(--azul-primario);
@@ -814,7 +860,8 @@ p {
 }
 
 .calendario-seta-inativa {
-    color: #D1D5DB;
+    color: var(--texto-secundario);
+    opacity: .45;
 }
 
 .calendario-grade {
@@ -840,9 +887,10 @@ p {
     align-items: center;
     justify-content: center;
     width: 100%;
+    min-height: 44px;
     aspect-ratio: 1;
     border-radius: 10px;
-    font-size: 14px;
+    font-size: 15px;
     font-weight: 600;
     color: var(--texto);
     text-decoration: none;
@@ -853,8 +901,9 @@ a.dia:hover {
 }
 
 .dia-passado {
-    color: #D1D5DB;
+    color: var(--texto-secundario);
     font-weight: 400;
+    opacity: .7;
 }
 
 .dia-escolhido {
@@ -912,7 +961,8 @@ a.dia-escolhido:hover {
 }
 
 .horario-ocupado {
-    color: #D1D5DB;
+    color: var(--texto-secundario);
+    opacity: .6;
     background: var(--fundo);
     text-decoration: line-through;
     cursor: not-allowed;
@@ -1044,9 +1094,9 @@ a.dia-escolhido:hover {
     justify-content: space-between;
     gap: 12px;
     background: var(--branco);
+    border: 1px solid var(--borda);
     border-radius: var(--radius);
-    box-shadow: var(--sombra);
-    padding: 14px 16px;
+    padding: 16px;
     margin-bottom: 10px;
 }
 
@@ -1122,7 +1172,7 @@ a.dia-escolhido:hover {
 
 .estrelas-input input:checked + label,
 .estrelas-input input:checked + label ~ label {
-    color: #F59E0B;
+    color: #B45309;
 }
 
 .estrelas-input label:hover,
@@ -1183,8 +1233,8 @@ a.dia-escolhido:hover {
     display: flex;
     flex-direction: column;
     align-items: center;
-    gap: 2px;
-    padding: 10px 0 12px;
+    gap: 3px;
+    padding: 12px 0 14px;
     font-size: 11px;
     font-weight: 600;
     color: var(--texto-secundario);
@@ -1213,9 +1263,9 @@ body:has(.nav-inferior) .barra-acao {
 
 .cartao-aula-detalhe {
     background: var(--branco);
+    border: 1px solid var(--borda);
     border-radius: var(--radius);
-    box-shadow: var(--sombra);
-    padding: 16px;
+    padding: 18px 16px;
     margin-bottom: 12px;
 }
 
@@ -1283,6 +1333,9 @@ body:has(.nav-inferior) .barra-acao {
 }
 
 .botao-texto {
+    display: inline-flex;
+    align-items: center;
+    min-height: 44px;
     background: none;
     border: none;
     padding: 0;
@@ -1342,10 +1395,10 @@ body:has(.nav-inferior) .barra-acao {
 }
 
 .painel-numero {
-    background: var(--branco);
+    background: var(--superficie);
+    border: 1px solid var(--borda);
     border-radius: var(--radius);
-    box-shadow: var(--sombra);
-    padding: 14px 10px;
+    padding: 16px 10px;
     text-align: center;
 }
 
@@ -1381,4 +1434,27 @@ body:has(.nav-inferior) .barra-acao {
 .flash-sucesso {
     background: #DCFCE7;
     color: var(--sucesso);
+}
+
+
+/* Foco visível em toda a interface (navegação por teclado) */
+
+a:focus-visible,
+button:focus-visible,
+input:focus-visible,
+select:focus-visible,
+textarea:focus-visible,
+.dia:focus-visible {
+    outline: 3px solid var(--azul-primario);
+    outline-offset: 2px;
+    border-radius: 6px;
+}
+
+/* Respeita quem configurou o sistema para reduzir animações */
+
+@media (prefers-reduced-motion: reduce) {
+    *, *::before, *::after {
+        animation-duration: .001ms !important;
+        transition-duration: .001ms !important;
+    }
 }

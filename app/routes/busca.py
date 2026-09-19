@@ -10,7 +10,9 @@ SELECT_BASE = """
            u.nome,
            u.cidade,
            u.foto_url,
-           i.categorias_cnh,
+           (SELECT GROUP_CONCAT(categoria)
+              FROM (SELECT categoria FROM instrutor_categorias
+                     WHERE instrutor_id = i.id ORDER BY categoria)) AS categorias_cnh,
            i.valor_aula,
            i.regiao_atuacao,
            i.verificado,
@@ -88,8 +90,14 @@ def montar_consulta(filtros):
         parametros.append(filtros["cidade"])
 
     if filtros["categoria"]:
-        condicoes.append("i.categorias_cnh LIKE ?")
-        parametros.append(f"%{filtros['categoria']}%")
+        # Comparação exata pela tabela de junção. Antes era um LIKE '%B%', que só
+        # funcionava por acaso: as categorias são letras únicas. Com a tabela
+        # normalizada, a busca deixa de depender dessa coincidência.
+        condicoes.append(
+            "EXISTS (SELECT 1 FROM instrutor_categorias ic"
+            "         WHERE ic.instrutor_id = i.id AND ic.categoria = ?)"
+        )
+        parametros.append(filtros["categoria"])
 
     if filtros["preco_maximo"]:
         condicoes.append("i.valor_aula <= ?")

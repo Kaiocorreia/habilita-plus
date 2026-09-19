@@ -1,4 +1,5 @@
 import calendar
+import sqlite3
 from datetime import date
 
 from flask import Blueprint, abort, flash, redirect, render_template, request, session, url_for
@@ -162,19 +163,29 @@ def confirmar():
             return redirect(url_for("agendamentos.escolher",
                                     instrutor_id=pendente["instrutor_id"], data=pendente["data"]))
 
-        cursor = conexao.execute(
-            """
-            INSERT INTO agendamentos
-                (candidato_id, instrutor_id, veiculo_id, data, horario, status, valor, valor_locacao)
-            VALUES (?, ?, ?, ?, ?, 'agendado', ?, ?)
-            """,
-            (
-                session["usuario_id"], pendente["instrutor_id"], pendente["veiculo_id"],
-                pendente["data"], pendente["horario"], instrutor["valor_aula"], valor_locacao,
-            ),
-        )
-        conexao.commit()
-        agendamento_id = cursor.lastrowid
+        try:
+            cursor = conexao.execute(
+                """
+                INSERT INTO agendamentos
+                    (candidato_id, instrutor_id, veiculo_id, data, horario, status, valor, valor_locacao)
+                VALUES (?, ?, ?, ?, ?, 'agendado', ?, ?)
+                """,
+                (
+                    session["usuario_id"], pendente["instrutor_id"], pendente["veiculo_id"],
+                    pendente["data"], pendente["horario"], instrutor["valor_aula"], valor_locacao,
+                ),
+            )
+            conexao.commit()
+            agendamento_id = cursor.lastrowid
+        except sqlite3.IntegrityError:
+            # Rede final contra a condição de corrida: o índice parcial único
+            # recusa uma segunda aula ativa no mesmo instrutor, data e horário.
+            conexao.rollback()
+            conexao.close()
+            flash("Esse horário acabou de ser reservado por outra pessoa. Escolha outro.", "erro")
+            return redirect(url_for("agendamentos.escolher",
+                                    instrutor_id=pendente["instrutor_id"], data=pendente["data"]))
+
         conexao.close()
 
         session.pop("agendamento", None)

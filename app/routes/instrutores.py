@@ -10,7 +10,9 @@ CONSULTA_PERFIL = """
            u.cidade,
            u.telefone,
            u.foto_url,
-           i.categorias_cnh,
+           (SELECT GROUP_CONCAT(categoria)
+              FROM (SELECT categoria FROM instrutor_categorias
+                     WHERE instrutor_id = i.id ORDER BY categoria)) AS categorias_cnh,
            i.valor_aula,
            i.regiao_atuacao,
            i.verificado,

@@ -174,16 +174,20 @@ def cadastro_acessibilidade():
             conexao.execute(
                 """
                 INSERT INTO preferencias_candidato
-                    (usuario_id, categorias_cnh_pretendidas, prefere_instrutoras_mulheres,
+                    (usuario_id, prefere_instrutoras_mulheres,
                      prefere_experiencia_neurodivergencia, prefere_experiencia_pcd)
-                VALUES (?, ?, ?, ?, ?)
+                VALUES (?, ?, ?, ?)
                 """,
                 (
-                    usuario_id, cadastro["categorias_cnh_pretendidas"],
+                    usuario_id,
                     int(cadastro["prefere_instrutoras_mulheres"]),
                     int(cadastro["prefere_experiencia_neurodivergencia"]),
                     int(cadastro["prefere_experiencia_pcd"]),
                 ),
+            )
+            conexao.executemany(
+                "INSERT INTO candidato_categorias (usuario_id, categoria) VALUES (?, ?)",
+                [(usuario_id, c) for c in cadastro["categorias_cnh_pretendidas"].split(",")],
             )
 
             if tipo_deficiencia != "nenhuma":
@@ -259,19 +263,23 @@ def cadastro_instrutor():
             )
             usuario_id = cursor.lastrowid
 
-            conexao.execute(
+            cursor = conexao.execute(
                 """
                 INSERT INTO instrutores
-                    (usuario_id, categorias_cnh, valor_aula, regiao_atuacao,
+                    (usuario_id, valor_aula, regiao_atuacao,
                      verificado, atende_libras, somente_mulheres,
                      atende_neurodivergentes, atende_pcd, veiculo_adaptado_disponivel)
-                VALUES (?, ?, ?, ?, 0, ?, ?, ?, ?, ?)
+                VALUES (?, ?, ?, 0, ?, ?, ?, ?, ?)
                 """,
                 (
-                    usuario_id, ",".join(categorias), valor_aula, regiao_atuacao,
+                    usuario_id, valor_aula, regiao_atuacao,
                     int(atende_libras), int(somente_mulheres),
                     int(atende_neurodivergentes), int(atende_pcd), int(veiculo_adaptado_disponivel),
                 ),
+            )
+            conexao.executemany(
+                "INSERT INTO instrutor_categorias (instrutor_id, categoria) VALUES (?, ?)",
+                [(cursor.lastrowid, c) for c in categorias],
             )
             conexao.commit()
         except sqlite3.IntegrityError:

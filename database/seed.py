@@ -9,6 +9,8 @@ SENHA_PADRAO = generate_password_hash("senha123")
 TABELAS_EM_ORDEM_DE_LIMPEZA = [
     "avaliacoes",
     "agendamentos",
+    "instrutor_categorias",
+    "candidato_categorias",
     "instrutor_veiculos",
     "veiculos",
     "instrutores",
@@ -74,16 +76,22 @@ def inserir_instrutor(conexao, usuario_id, categorias_cnh, valor_aula, regiao_at
     cursor = conexao.execute(
         """
         INSERT INTO instrutores
-            (usuario_id, categorias_cnh, valor_aula, regiao_atuacao,
+            (usuario_id, valor_aula, regiao_atuacao,
              verificado, atende_libras, somente_mulheres,
              atende_neurodivergentes, atende_pcd, veiculo_adaptado_disponivel)
-        VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+        VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)
         """,
-        (usuario_id, categorias_cnh, valor_aula, regiao_atuacao,
+        (usuario_id, valor_aula, regiao_atuacao,
          int(verificado), int(atende_libras), int(somente_mulheres),
          int(atende_neurodivergentes), int(atende_pcd), int(veiculo_adaptado_disponivel)),
     )
-    return cursor.lastrowid
+    instrutor_id = cursor.lastrowid
+
+    conexao.executemany(
+        "INSERT INTO instrutor_categorias (instrutor_id, categoria) VALUES (?, ?)",
+        [(instrutor_id, c) for c in categorias_cnh.split(",")],
+    )
+    return instrutor_id
 
 
 def inserir_preferencia_candidato(conexao, usuario_id, categorias_cnh_pretendidas,
@@ -93,12 +101,16 @@ def inserir_preferencia_candidato(conexao, usuario_id, categorias_cnh_pretendida
     conexao.execute(
         """
         INSERT INTO preferencias_candidato
-            (usuario_id, categorias_cnh_pretendidas, prefere_instrutoras_mulheres,
+            (usuario_id, prefere_instrutoras_mulheres,
              prefere_experiencia_neurodivergencia, prefere_experiencia_pcd)
-        VALUES (?, ?, ?, ?, ?)
+        VALUES (?, ?, ?, ?)
         """,
-        (usuario_id, categorias_cnh_pretendidas, int(prefere_instrutoras_mulheres),
+        (usuario_id, int(prefere_instrutoras_mulheres),
          int(prefere_experiencia_neurodivergencia), int(prefere_experiencia_pcd)),
+    )
+    conexao.executemany(
+        "INSERT INTO candidato_categorias (usuario_id, categoria) VALUES (?, ?)",
+        [(usuario_id, c) for c in categorias_cnh_pretendidas.split(",")],
     )
 
 

@@ -108,17 +108,109 @@ Todas as contas do seed usam a senha **`senha123`**.
 
 ## Modelo de dados
 
-O banco tem 7 tabelas e contempla os três tipos de relacionamento.
+O banco tem 10 tabelas e contempla os três tipos de relacionamento: 1:1, 1:N e N:N.
 
+```mermaid
+erDiagram
+    usuarios ||--o| perfis_acessibilidade : "declara"
+    usuarios ||--o| preferencias_candidato : "define"
+    usuarios ||--o{ candidato_categorias : "pretende tirar"
+    usuarios ||--o| instrutores : "e profissional"
+    usuarios ||--o{ agendamentos : "agenda"
+    usuarios ||--o{ avaliacoes : "escreve"
+    instrutores ||--o{ instrutor_categorias : "ensina"
+    instrutores ||--o{ instrutor_veiculos : "oferece"
+    instrutores ||--o{ agendamentos : "recebe"
+    instrutores ||--o{ avaliacoes : "recebe"
+    veiculos ||--o{ instrutor_veiculos : "disponivel com"
+    veiculos ||--o{ agendamentos : "usado na aula"
+    agendamentos ||--o| avaliacoes : "permite avaliar"
+
+    usuarios {
+        int id PK
+        text nome
+        text email UK
+        text senha_hash
+        text tipo "candidato ou instrutor"
+        text cidade
+        text telefone
+        text foto_url
+        text data_cadastro
+    }
+    perfis_acessibilidade {
+        int id PK
+        int usuario_id FK "UNIQUE"
+        text tipo_deficiencia
+        text canal_comunicacao "texto libras audio"
+        int precisa_veiculo_adaptado
+    }
+    preferencias_candidato {
+        int id PK
+        int usuario_id FK "UNIQUE"
+        int prefere_instrutoras_mulheres
+        int prefere_experiencia_neurodivergencia
+        int prefere_experiencia_pcd
+    }
+    candidato_categorias {
+        int usuario_id PK "FK"
+        text categoria PK "A ate E"
+    }
+    instrutores {
+        int id PK
+        int usuario_id FK "UNIQUE"
+        real valor_aula
+        text regiao_atuacao
+        int verificado
+        int atende_libras
+        int somente_mulheres
+        int atende_neurodivergentes
+        int atende_pcd
+        int veiculo_adaptado_disponivel
+    }
+    instrutor_categorias {
+        int instrutor_id PK "FK"
+        text categoria PK "A ate E"
+    }
+    veiculos {
+        int id PK
+        text marca
+        text modelo
+        text categoria_cnh
+        text transmissao "manual ou automatico"
+        int adaptado
+        real valor_locacao
+        text imagem
+    }
+    instrutor_veiculos {
+        int instrutor_id PK "FK"
+        int veiculo_id PK "FK"
+    }
+    agendamentos {
+        int id PK
+        int candidato_id FK
+        int instrutor_id FK
+        int veiculo_id FK "opcional"
+        text data
+        text horario
+        text status "agendado confirmado concluido cancelado"
+        real valor "congelado na contratacao"
+        real valor_locacao "congelado na contratacao"
+    }
+    avaliacoes {
+        int id PK
+        int agendamento_id FK "UNIQUE"
+        int candidato_id FK
+        int instrutor_id FK
+        int nota "1 a 5"
+        text comentario
+        text data
+    }
 ```
-usuarios (1) ──── (0..1) perfis_acessibilidade      1:1
-usuarios (1) ──── (0..1) preferencias_candidato     1:1
-usuarios (1) ──── (0..1) instrutores                1:1
-usuarios (1) ──── (N)    agendamentos               1:N
-instrutores (1) ── (N)   agendamentos               1:N
-agendamentos (1) ─ (0..1) avaliacoes                1:1
-instrutores (N) ── (N)   veiculos                   N:N (via instrutor_veiculos)
-```
+
+**Como ler:** `||--o|` significa "um para zero-ou-um" (relação 1:1 opcional) e `||--o{`
+significa "um para muitos". As tabelas `instrutor_categorias`, `candidato_categorias` e
+`instrutor_veiculos` são **tabelas de junção**: existem apenas para guardar pares e têm
+chave primária composta.
 
 ### `usuarios`
 Tabela central. Guarda candidatos e profissionais na mesma estrutura, diferenciados pela
@@ -131,16 +223,23 @@ a pessoa preenche a etapa de acessibilidade do cadastro — tipo de deficiência
 comunicação preferido (texto, Libras ou áudio) e se precisa de veículo adaptado.
 Ficou em tabela separada para não deixar colunas nulas em toda linha de `usuarios`.
 
-### `preferencias_candidato`
-Extensão opcional de `usuarios` para candidatos: categorias de CNH pretendidas e as três
-preferências de busca (somente mulheres, experiência com neurodivergentes, experiência
-com PcD). São essas preferências que a tela de busca carrega automaticamente.
+### `preferencias_candidato` e `candidato_categorias`
+Extensão opcional de `usuarios` para candidatos, com as três preferências de busca
+(somente mulheres, experiência com neurodivergentes, experiência com PcD). São elas que a
+tela de busca carrega automaticamente. As categorias de CNH pretendidas ficam na tabela
+de junção `candidato_categorias`, uma linha por categoria.
 
-### `instrutores`
+### `instrutores` e `instrutor_categorias`
 Extensão de `usuarios` para quem oferece aulas. Guarda valor da aula, região de atuação e
 os atributos que alimentam os filtros: `atende_libras`, `somente_mulheres`,
 `atende_neurodivergentes`, `atende_pcd` e `veiculo_adaptado_disponivel`. A coluna
-`verificado` controla se o perfil aparece nas buscas.
+`verificado` controla se o perfil recebe o selo — perfis novos aparecem nas buscas como
+*Em análise*, ordenados após os verificados.
+
+As categorias que o instrutor ensina ficam em `instrutor_categorias`, uma linha por
+categoria. Essa tabela substituiu um campo de texto `"A,B"` que existia antes e violava a
+1ª Forma Normal. Com ela, o filtro da busca passou de um `LIKE '%B%'` — que só funcionava
+porque as categorias são letras únicas — para uma comparação exata via `EXISTS`.
 
 ### `veiculos` e `instrutor_veiculos`
 Relacionamento **muitos-para-muitos**: um instrutor oferece vários veículos, e o mesmo
@@ -152,6 +251,19 @@ guardar os pares, e sua chave primária é composta — `PRIMARY KEY (instrutor_
 Uma linha por aula marcada. O `status` (`agendado`, `confirmado`, `concluido`,
 `cancelado`) é restrito por `CHECK` e controla tanto a disponibilidade de horários quanto
 a liberação da avaliação.
+
+Um **índice parcial único** impede duas aulas ativas no mesmo instrutor, data e horário:
+
+```sql
+CREATE UNIQUE INDEX idx_agenda_ocupada
+    ON agendamentos (instrutor_id, data, horario)
+    WHERE status IN ('agendado', 'confirmado');
+```
+
+A cláusula `WHERE` é o que torna isso correto: sem ela, uma aula cancelada continuaria
+ocupando o horário para sempre, já que a linha permanece na tabela. É essa constraint que
+fecha a condição de corrida — dois candidatos clicando no mesmo instante não conseguem
+mais reservar o mesmo horário, porque o segundo `INSERT` é recusado pelo banco.
 
 Guarda `valor` e `valor_locacao` copiados no momento da contratação, e não apenas as
 chaves estrangeiras. Isso é intencional: se o preço do instrutor ou da locação mudar
@@ -241,6 +353,28 @@ As duas primeiras servem para dar mensagens claras; a do banco é a que realment
 **Calendário sem JavaScript.** O calendário de agendamento é uma tabela HTML gerada pelo
 módulo `calendar` do Python, e cada dia é um link comum. Funciona com o botão Voltar do
 navegador e com leitores de tela — relevante num projeto cujo foco é acessibilidade.
+
+## Acessibilidade
+
+O projeto foi auditado contra as diretrizes WCAG 2.1 nível AA. Oito telas verificadas
+(splash, login, cadastro, home, busca, perfil, agendamento e minhas aulas):
+
+| Critério | Resultado |
+|---|---|
+| Contraste de texto (1.4.3 — mínimo 4.5:1) | 0 falhas |
+| Alvos de toque (2.5.5 — mínimo 44×44px) | 0 falhas |
+| Campos de formulário com rótulo (1.3.1, 3.3.2) | 0 falhas |
+| Imagens com texto alternativo (1.1.1) | 0 falhas |
+| Idioma da página declarado (3.1.1) | `lang="pt-BR"` |
+
+Correções aplicadas durante a auditoria: a cor das estrelas foi escurecida de `#F59E0B`
+para `#B45309` (o âmbar original dava apenas 2.15:1), os dias passados e horários ocupados
+do calendário deixaram de usar cinza-claro ilegível, e links como *Ver todas* e *Ver
+perfil* ganharam altura mínima de 44px.
+
+A interface também declara `prefers-reduced-motion` para quem configurou o sistema
+operacional para reduzir animações, e todo elemento focável tem contorno visível para
+navegação por teclado.
 
 ## PWA
 
@@ -377,13 +511,10 @@ Pontos deixados em aberto conscientemente, por estarem fora do escopo desta fase
   instalação em HTTPS (`localhost` é a única exceção). Acessando pelo IP local em HTTP, o
   "Adicionar à tela inicial" geralmente funciona, mas a instalação completa não. Veja a
   seção *Publicação com HTTPS* para resolver isso.
-- **`categorias_cnh` é um campo de texto** (`"A,B"`) em vez de uma tabela de junção. Isso
-  viola a 1ª Forma Normal e obriga a busca a usar `LIKE`, que só funciona corretamente
-  porque as categorias são letras únicas. A modelagem correta seria uma tabela
-  `instrutor_categorias`, no mesmo padrão de `instrutor_veiculos`.
-- **Concorrência no agendamento.** O horário é checado ao montar a tela e de novo ao
-  gravar, o que fecha quase toda a janela de condição de corrida. A garantia definitiva
-  seria uma constraint `UNIQUE (instrutor_id, data, horario)`.
+- **Instrutor não define disponibilidade.** Todos os profissionais oferecem a mesma grade
+  fixa de horários (07:00–17:00). O passo natural seria uma tabela `disponibilidades`.
+- **Sem busca por nome.** Os filtros cobrem cidade, categoria, preço, avaliação e
+  acessibilidade, mas não há campo de texto livre.
 - **Painel do instrutor é somente leitura.** Ele vê a própria agenda, a nota e o total de
   aulas dadas, mas ainda não edita o perfil nem define horários de disponibilidade.
 - **Verificação de perfil não tem fluxo de aprovação.** Perfis novos aparecem nas buscas

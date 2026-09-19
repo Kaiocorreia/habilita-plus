@@ -22,7 +22,6 @@ CREATE TABLE perfis_acessibilidade (
 CREATE TABLE instrutores (
     id                          INTEGER PRIMARY KEY AUTOINCREMENT,
     usuario_id                  INTEGER NOT NULL UNIQUE,
-    categorias_cnh              TEXT NOT NULL,
     valor_aula                  REAL NOT NULL,
     regiao_atuacao              TEXT,
     verificado                  INTEGER NOT NULL DEFAULT 0 CHECK (verificado IN (0, 1)),
@@ -34,13 +33,26 @@ CREATE TABLE instrutores (
     FOREIGN KEY (usuario_id) REFERENCES usuarios (id) ON DELETE CASCADE
 );
 
+CREATE TABLE instrutor_categorias (
+    instrutor_id    INTEGER NOT NULL,
+    categoria       TEXT NOT NULL CHECK (categoria IN ('A', 'B', 'C', 'D', 'E')),
+    PRIMARY KEY (instrutor_id, categoria),
+    FOREIGN KEY (instrutor_id) REFERENCES instrutores (id) ON DELETE CASCADE
+);
+
 CREATE TABLE preferencias_candidato (
     id                                      INTEGER PRIMARY KEY AUTOINCREMENT,
     usuario_id                              INTEGER NOT NULL UNIQUE,
-    categorias_cnh_pretendidas              TEXT NOT NULL,
     prefere_instrutoras_mulheres            INTEGER NOT NULL DEFAULT 0 CHECK (prefere_instrutoras_mulheres IN (0, 1)),
     prefere_experiencia_neurodivergencia    INTEGER NOT NULL DEFAULT 0 CHECK (prefere_experiencia_neurodivergencia IN (0, 1)),
     prefere_experiencia_pcd                 INTEGER NOT NULL DEFAULT 0 CHECK (prefere_experiencia_pcd IN (0, 1)),
+    FOREIGN KEY (usuario_id) REFERENCES usuarios (id) ON DELETE CASCADE
+);
+
+CREATE TABLE candidato_categorias (
+    usuario_id      INTEGER NOT NULL,
+    categoria       TEXT NOT NULL CHECK (categoria IN ('A', 'B', 'C', 'D', 'E')),
+    PRIMARY KEY (usuario_id, categoria),
     FOREIGN KEY (usuario_id) REFERENCES usuarios (id) ON DELETE CASCADE
 );
 
@@ -91,7 +103,15 @@ CREATE TABLE avaliacoes (
     FOREIGN KEY (instrutor_id) REFERENCES instrutores (id)
 );
 
+-- Índice PARCIAL: impede duas aulas ativas no mesmo instrutor, data e horário.
+-- A cláusula WHERE é essencial — sem ela, uma aula cancelada continuaria
+-- ocupando o horário para sempre, já que a linha permanece na tabela.
+CREATE UNIQUE INDEX idx_agenda_ocupada
+    ON agendamentos (instrutor_id, data, horario)
+    WHERE status IN ('agendado', 'confirmado');
+
 CREATE INDEX idx_instrutores_usuario ON instrutores (usuario_id);
+CREATE INDEX idx_instrutor_categorias_categoria ON instrutor_categorias (categoria);
 CREATE INDEX idx_instrutor_veiculos_veiculo ON instrutor_veiculos (veiculo_id);
 CREATE INDEX idx_agendamentos_instrutor ON agendamentos (instrutor_id);
 CREATE INDEX idx_agendamentos_candidato ON agendamentos (candidato_id);
