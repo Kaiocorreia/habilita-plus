@@ -334,7 +334,7 @@ habilita-plus/
 │   │   └── avaliacoes.py    avaliação pós-aula
 │   ├── templates/           HTML com Jinja2 (_componentes.html reúne as peças reutilizadas)
 │   └── static/
-│       ├── css/style.css    identidade visual completa, mobile-first
+│       ├── css/style.css    identidade visual completa, mobile-first (tokens do DESIGN.md)
 │       ├── js/app.js        melhorias progressivas (o site funciona sem ele)
 │       ├── icons/           ícones do PWA
 │       ├── img/             fotos dos profissionais e veículos
@@ -392,12 +392,14 @@ navegador e com leitores de tela — relevante num projeto cujo foco é acessibi
 ## Acessibilidade
 
 O projeto foi auditado contra as diretrizes WCAG 2.2 nível AA, em celular (375px) e
-desktop (1366px). Telas verificadas: entrada, login, cadastro, home, busca, perfil,
-agendamento e minhas aulas, nas visões de candidato e de instrutor:
+desktop (1366px). Telas verificadas (26 no total): entrada, login, cadastro, home, busca,
+perfil, agendamento, minhas aulas e edição de perfil, nas visões de candidato e de
+instrutor. A auditoria foi refeita depois do redesign descrito em `DESIGN.md`:
 
 | Critério | Resultado |
 |---|---|
 | Contraste de texto (1.4.3 — mínimo 4.5:1) | 0 falhas |
+| Contraste de campos e marcadores (1.4.11 — mínimo 3:1) | borda `#858585`, 3,3:1 ou mais |
 | Alvos de toque (2.5.5 — mínimo 44×44px) | 0 falhas |
 | Campos de formulário com rótulo (1.3.1, 3.3.2) | 0 falhas |
 | Imagens com texto alternativo (1.1.1) | 0 falhas |
@@ -406,10 +408,12 @@ agendamento e minhas aulas, nas visões de candidato e de instrutor:
 | Foco não escondido pelas barras fixas (2.4.11) | `scroll-padding` |
 | Rolagem horizontal no celular (1.4.10) | nenhuma |
 
-Correções aplicadas durante a auditoria: a cor das estrelas foi escurecida de `#F59E0B`
-para `#B45309` (o âmbar original dava apenas 2.15:1), os dias passados e horários ocupados
-do calendário deixaram de usar cinza-claro ilegível, e links como *Ver todas* e *Ver
-perfil* ganharam altura mínima de 44px.
+Correções aplicadas durante as auditorias: as estrelas deixaram o âmbar `#F59E0B` (2.15:1)
+e hoje são pretas; os dias passados e horários ocupados do calendário deixaram de usar
+cinza-claro ilegível; links como *Ver todas*, *Ver perfil* e *Alterar* (valor da aula, no
+painel do instrutor) ganharam altura mínima de 44px; e os campos de formulário ganharam
+uma borda com contraste de 3:1. Seleção (preto) e foco (anel azul de 3px) usam cores
+diferentes, para quem navega por teclado não confundir os dois.
 
 A interface também declara `prefers-reduced-motion` para quem configurou o sistema
 operacional para reduzir animações, todo elemento focável tem contorno visível para
@@ -422,7 +426,7 @@ tela (`aria-live`).
 O aplicativo pode ser adicionado à tela inicial do celular com ícone próprio e abre em
 tela cheia (`display: standalone`).
 
-- `static/manifest.json` — nome, ícones (192, 512 e maskable), tema azul `#2563EB`
+- `static/manifest.json` — nome, ícones (192, 512 e maskable), tema e fundo brancos `#FFFFFF`
 - `static/service-worker.js` — páginas sempre da rede (horários mudam o tempo todo); sem
   conexão, mostra a página `/offline` em vez do erro do navegador
 - Meta tags de iOS (`apple-mobile-web-app-capable`, `apple-touch-icon`) em `base.html`
