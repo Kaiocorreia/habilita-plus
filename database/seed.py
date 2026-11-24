@@ -11,6 +11,8 @@ except ImportError:  # executado como script: python database/seed.py
 SENHA_PADRAO = generate_password_hash("senha123")
 
 TABELAS_EM_ORDEM_DE_LIMPEZA = [
+    "favoritos",
+    "folgas",
     "acoes_gerenciais",
     "configuracoes",
     "avaliacoes",

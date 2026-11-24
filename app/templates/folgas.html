@@ -1,0 +1,45 @@
+{% extends "base.html" %}
+{% from "_componentes.html" import campo_csrf, cabecalho, icone, estado_vazio %}
+{% block title %}Dias de folga · Habilita+{% endblock %}
+{% block main_class %}conteudo-estreito{% endblock %}
+{% block content %}
+
+{{ cabecalho("Dias de folga", voltar=url_for('agendamentos.minhas_aulas'), voltar_rotulo="Agenda",
+             subtitulo="Nesses dias o seu calendário aparece fechado e ninguém consegue agendar.") }}
+
+<form method="POST" class="formulario cartao folga-form">
+    {{ campo_csrf() }}
+    <div class="campo">
+        <label for="data">Novo dia de folga</label>
+        <input type="date" id="data" name="data" min="{{ hoje }}" max="{{ limite }}" required>
+    </div>
+    <button type="submit" class="botao botao-primario" data-enviando="Salvando…">Marcar folga</button>
+</form>
+
+<section class="secao" aria-labelledby="titulo-folgas">
+    <h2 id="titulo-folgas" class="titulo-secao">Próximas folgas <span class="contagem">{{ folgas|length }}</span></h2>
+    {% if folgas %}
+    <ul class="lista-gerencia lista-folgas">
+        {% for folga in folgas %}
+        <li class="linha-gerencia">
+            <div class="linha-pessoa">
+                <span class="data-bloco" aria-hidden="true"><span>{{ folga.data[8:10] }}</span><small>{{ ["jan","fev","mar","abr","mai","jun","jul","ago","set","out","nov","dez"][folga.data[5:7]|int - 1] }}</small></span>
+                <div>
+                    <strong>{{ folga.extenso | capitalize }}</strong>
+                    {% if folga.aulas %}<span class="texto-alerta">{{ icone("alerta") }}{{ folga.aulas }} aula(s) já marcada(s) neste dia continuam valendo</span>
+                    {% else %}<span>Sem aulas marcadas</span>{% endif %}
+                </div>
+            </div>
+            <form method="POST" action="{{ url_for('instrutores.remover_folga', data=folga.data) }}">
+                {{ campo_csrf() }}
+                <button type="submit" class="botao botao-secundario botao-sm">Remover</button>
+            </form>
+        </li>
+        {% endfor %}
+    </ul>
+    {% else %}
+        {{ estado_vazio("Nenhuma folga marcada", "Todos os dias da janela de agendamento estão abertos para os candidatos.") }}
+    {% endif %}
+</section>
+
+{% endblock %}

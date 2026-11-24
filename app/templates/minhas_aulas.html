@@ -27,6 +27,12 @@
         {% if ativa and contato %}
             <a class="botao botao-secundario botao-sm" href="{{ contato }}" target="_blank" rel="noopener noreferrer">{{ icone("conversa") }}WhatsApp</a>
         {% endif %}
+        {% if ativa %}
+            <a class="botao botao-secundario botao-sm" href="{{ url_for('agendamentos.calendario_ics', agendamento_id=aula['id']) }}">{{ icone("baixar") }}Agenda do celular</a>
+        {% endif %}
+        {% if ativa and not eh_instrutor %}
+            <a class="botao-link" href="{{ url_for('agendamentos.escolher', instrutor_id=aula['instrutor_id'], remarcar=aula['id']) }}">Remarcar</a>
+        {% endif %}
 
         {% if not eh_instrutor %}
             <a class="botao-link" href="{{ url_for('instrutores.perfil', instrutor_id=aula['instrutor_id']) }}">Ver perfil</a>
@@ -59,8 +65,13 @@
 
 {% block content %}
 
+<div class="cabecalho-com-acao">
 {{ cabecalho("Agenda" if eh_instrutor else "Minhas aulas",
              subtitulo="Confirme as aulas pedidas e fale com seus alunos." if eh_instrutor else "Acompanhe, cancele ou avalie suas aulas.") }}
+{% if eh_instrutor %}
+<a class="botao botao-secundario botao-sm" href="{{ url_for('instrutores.folgas') }}">{{ icone("calendario") }}Dias de folga</a>
+{% endif %}
+</div>
 
 <section class="secao" aria-labelledby="titulo-proximas">
     <h2 id="titulo-proximas" class="titulo-secao">Próximas <span class="contagem">{{ proximas|length }}</span></h2>

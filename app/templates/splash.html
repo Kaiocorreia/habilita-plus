@@ -1,5 +1,5 @@
 {% extends "base.html" %}
-{% from "_componentes.html" import icone %}
+{% from "_componentes.html" import icone, foto, estrelas, etiquetas_atendimento %}
 {% block title %}Habilita+ · Instrutores de autoescola no Espírito Santo{% endblock %}
 {% block body_class %}pagina-entrada{% endblock %}
 {% block head %}
@@ -11,7 +11,8 @@
 {% endblock %}
 {% block content %}
 
-<section class="entrada-hero">
+<section class="entrada-hero {{ 'com-vitrine' if vitrine }}">
+  <div class="entrada-hero-texto">
     <p class="sobretitulo">Habilitação no Espírito Santo</p>
     <h1 class="entrada-titulo">Sua CNH com o instrutor certo, <span>do jeito certo para você.</span></h1>
     <p class="entrada-texto">
@@ -30,6 +31,47 @@
         <div><dt>Avaliações de alunos</dt><dd>{{ numeros["avaliacoes"] }}</dd></div>
     </dl>
     {% endif %}
+  </div>
+
+  {% if vitrine %}
+  {# Prévia do produto montada com dados reais do banco. É ilustrativa: os
+     leitores de tela ouvem a descrição em texto, não os pedaços da interface. #}
+  {% set locacao = veiculo_vitrine["valor_locacao"] if veiculo_vitrine else 0 %}
+  <figure class="vitrine">
+    <figcaption class="oculto">
+      Prévia do app: {{ vitrine["nome"] }}, instrutor verificado em {{ vitrine["regiao_atuacao"] or vitrine["cidade"] }},
+      aula de {{ vitrine["valor_aula"] | moeda }}{% if veiculo_vitrine %} mais {{ locacao | moeda }} de locação do {{ veiculo_vitrine["modelo"] }}{% endif %},
+      total de {{ (vitrine["valor_aula"] + locacao) | moeda }}.
+    </figcaption>
+    <div class="vitrine-palco" aria-hidden="true">
+      <div class="vitrine-cartao">
+        <div class="vitrine-pessoa">
+          {{ foto(vitrine["foto_url"], vitrine["nome"], "md") }}
+          <div>
+            <strong>{{ vitrine["nome"] }}</strong>
+            <span>{{ icone("escudo") }}Verificado · {{ vitrine["regiao_atuacao"] or vitrine["cidade"] }}</span>
+          </div>
+        </div>
+        {% if vitrine["total_avaliacoes"] %}
+        <p class="vitrine-nota">{{ estrelas(vitrine["media_estrelas"]) }}<strong>{{ ("%.1f"|format(vitrine["media_estrelas"])) | replace(".", ",") }}</strong><span>· {{ vitrine["total_avaliacoes"] }} avaliações</span></p>
+        {% endif %}
+        <div class="etiquetas">{{ etiquetas_atendimento(vitrine) }}</div>
+      </div>
+
+      <div class="vitrine-cartao vitrine-horarios">
+        <span class="vitrine-rotulo">Horários livres</span>
+        <div class="vitrine-pilulas"><span>08:00</span><span>10:00</span><span class="ativo">14:00</span><span>16:00</span></div>
+      </div>
+
+      <div class="vitrine-cartao vitrine-total">
+        <div><span>Aula</span><span>{{ vitrine["valor_aula"] | moeda }}</span></div>
+        {% if veiculo_vitrine %}<div><span>{{ veiculo_vitrine["marca"] }} {{ veiculo_vitrine["modelo"] }}</span><span>{{ locacao | moeda }}</span></div>{% endif %}
+        <div class="vitrine-soma"><span>Total</span><strong>{{ (vitrine["valor_aula"] + locacao) | moeda }}</strong></div>
+        <span class="vitrine-botao">Confirmar agendamento</span>
+      </div>
+    </div>
+  </figure>
+  {% endif %}
 </section>
 
 <section class="entrada-secao" aria-labelledby="titulo-diferenciais">

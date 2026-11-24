@@ -44,6 +44,7 @@ class BaseTeste(unittest.TestCase):
             semear(forcar=True)
         self.app = create_app()
         self.app.config["TESTING"] = True
+        self.app.config["INTERVALO_CONCLUSAO"] = 0
         self.cliente = self.app.test_client()
 
     # --- auxiliares ---------------------------------------------------------

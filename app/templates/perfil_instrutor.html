@@ -1,5 +1,5 @@
 {% extends "base.html" %}
-{% from "_componentes.html" import foto, estrelas, icone, selo_verificacao, estado_vazio %}
+{% from "_componentes.html" import foto, estrelas, icone, selo_verificacao, estado_vazio, campo_csrf %}
 {% block title %}{{ instrutor["nome"] }} · Instrutor · Habilita+{% endblock %}
 {% block main_class %}conteudo-largo{% endblock %}
 {% block body_class %}{{ "com-barra-acao" if pode_agendar }}{% endblock %}
@@ -39,6 +39,13 @@
 
             {% if eh_dono %}
             <a class="botao botao-secundario botao-bloco" href="{{ url_for('instrutores.editar_perfil') }}">{{ icone("editar") }}Editar meu perfil</a>
+            {% elif pode_agendar %}
+            <form method="POST" action="{{ url_for('instrutores.alternar_favorito', instrutor_id=instrutor['id']) }}" class="form-salvar">
+                {{ campo_csrf() }}
+                <button type="submit" class="botao botao-secundario botao-bloco botao-salvar" aria-pressed="{{ 'true' if salvo else 'false' }}">
+                    {{ icone("coracao-cheio" if salvo else "coracao") }}{{ "Salvo" if salvo else "Salvar instrutor" }}
+                </button>
+            </form>
             {% endif %}
         </section>
 

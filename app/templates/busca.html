@@ -65,6 +65,13 @@
                 </select>
             </div>
 
+            {% if session.get("usuario_tipo") == "candidato" %}
+            <label class="opcao opcao-check">
+                <input type="checkbox" name="salvos" {{ "checked" if filtros.salvos }}>
+                <span class="opcao-texto"><strong>Só os que eu salvei</strong></span>
+            </label>
+            {% endif %}
+
             <fieldset class="grupo">
                 <legend>Atendimento</legend>
                 <div class="chips">

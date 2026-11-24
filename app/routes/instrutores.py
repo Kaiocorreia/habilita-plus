@@ -1,10 +1,12 @@
 from flask import Blueprint, abort, flash, g, redirect, render_template, request, url_for
 
-from app.agenda import concluir_aulas_passadas
+from datetime import timedelta
+
+from app.agenda import concluir_aulas_passadas, data_por_extenso, hoje, ler_data
 from app.constantes import ATENDIMENTOS_INSTRUTOR, CATEGORIAS_CNH
 from app.consultas import SELECT_INSTRUTORES, VEICULOS_DO_INSTRUTOR
 from app.formularios import validar_perfil_profissional
-from app.sessao import exige_login
+from app.sessao import destino_seguro, exige_login
 from database.db import get_connection
 
 instrutores_bp = Blueprint("instrutores", __name__)
@@ -44,6 +46,9 @@ def perfil(instrutor_id):
         abort(404)
 
     avaliacoes = conexao.execute(CONSULTA_AVALIACOES, (instrutor_id,)).fetchall()
+    salvo = conexao.execute(
+        "SELECT 1 FROM favoritos WHERE usuario_id = ? AND instrutor_id = ?", (g.usuario["id"], instrutor_id)
+    ).fetchone() is not None
     veiculos = conexao.execute(VEICULOS_DO_INSTRUTOR, (instrutor_id,)).fetchall()
     aulas_concluidas = conexao.execute(
         "SELECT COUNT(*) FROM agendamentos WHERE instrutor_id = ? AND status = 'concluido'",
@@ -64,6 +69,7 @@ def perfil(instrutor_id):
         aulas_concluidas=aulas_concluidas,
         distribuicao=distribuicao,
         eh_dono=eh_dono,
+        salvo=salvo,
         pode_agendar=g.usuario["tipo"] == "candidato" and bool(instrutor["ativo"]),
     )
 
@@ -141,3 +147,92 @@ def editar_perfil():
         valor_texto=f"{instrutor['valor_aula']:.2f}".replace(".", ","),
     )
     return render_template("editar_perfil.html", dados=dados, **contexto)
+
+
+# --- Favoritos (candidato) ---------------------------------------------------
+
+@instrutores_bp.route("/instrutor/<int:instrutor_id>/salvar", methods=["POST"])
+@exige_login(tipo="candidato")
+def alternar_favorito(instrutor_id):
+    conexao = get_connection()
+    if conexao.execute("SELECT 1 FROM instrutores WHERE id = ? AND ativo = 1", (instrutor_id,)).fetchone() is None:
+        conexao.close()
+        abort(404)
+
+    apagou = conexao.execute(
+        "DELETE FROM favoritos WHERE usuario_id = ? AND instrutor_id = ?", (g.usuario["id"], instrutor_id)
+    ).rowcount
+    if not apagou:
+        conexao.execute("INSERT INTO favoritos (usuario_id, instrutor_id) VALUES (?, ?)", (g.usuario["id"], instrutor_id))
+    conexao.commit()
+    conexao.close()
+
+    flash("Removido dos seus salvos." if apagou else "Instrutor salvo. Ele aparece no seu início.", "sucesso")
+    voltar = request.form.get("voltar")
+    return redirect(destino_seguro(voltar) if voltar else url_for("instrutores.perfil", instrutor_id=instrutor_id))
+
+
+# --- Folgas (instrutor) ------------------------------------------------------
+
+FOLGA_MAXIMA_DIAS = 365
+
+
+def _meu_instrutor_id(conexao):
+    linha = conexao.execute("SELECT id FROM instrutores WHERE usuario_id = ?", (g.usuario["id"],)).fetchone()
+    if linha is None:
+        conexao.close()
+        abort(404)
+    return linha["id"]
+
+
+@instrutores_bp.route("/agenda/folgas", methods=["GET", "POST"])
+@exige_login(tipo="instrutor")
+def folgas():
+    conexao = get_connection()
+    instrutor_id = _meu_instrutor_id(conexao)
+
+    if request.method == "POST":
+        dia = ler_data(request.form.get("data"))
+        if dia is None or not hoje() <= dia <= hoje() + timedelta(days=FOLGA_MAXIMA_DIAS):
+            flash("Escolha uma data entre hoje e os próximos 12 meses.", "erro")
+        else:
+            conexao.execute("INSERT OR IGNORE INTO folgas (instrutor_id, data) VALUES (?, ?)",
+                            (instrutor_id, dia.isoformat()))
+            conexao.commit()
+            marcadas = conexao.execute(
+                "SELECT COUNT(*) FROM agendamentos WHERE instrutor_id = ? AND data = ? AND status IN ('agendado', 'confirmado')",
+                (instrutor_id, dia.isoformat()),
+            ).fetchone()[0]
+            mensagem = f"Folga marcada em {data_por_extenso(dia)}. Ninguém consegue agendar nesse dia."
+            if marcadas:
+                mensagem += f" Atenção: {marcadas} aula(s) já marcada(s) nesse dia continuam valendo."
+            flash(mensagem, "sucesso")
+        conexao.close()
+        return redirect(url_for("instrutores.folgas"))
+
+    lista = conexao.execute(
+        """
+        SELECT f.data,
+               (SELECT COUNT(*) FROM agendamentos ag WHERE ag.instrutor_id = f.instrutor_id AND ag.data = f.data
+                  AND ag.status IN ('agendado', 'confirmado')) AS aulas
+        FROM folgas f WHERE f.instrutor_id = ? AND f.data >= ? ORDER BY f.data
+        """,
+        (instrutor_id, hoje().isoformat()),
+    ).fetchall()
+    conexao.close()
+    folgas_futuras = [{"data": linha["data"], "extenso": data_por_extenso(ler_data(linha["data"])), "aulas": linha["aulas"]}
+                      for linha in lista]
+    return render_template("folgas.html", folgas=folgas_futuras, hoje=hoje().isoformat(),
+                           limite=(hoje() + timedelta(days=FOLGA_MAXIMA_DIAS)).isoformat())
+
+
+@instrutores_bp.route("/agenda/folgas/<data>/remover", methods=["POST"])
+@exige_login(tipo="instrutor")
+def remover_folga(data):
+    conexao = get_connection()
+    instrutor_id = _meu_instrutor_id(conexao)
+    conexao.execute("DELETE FROM folgas WHERE instrutor_id = ? AND data = ?", (instrutor_id, data))
+    conexao.commit()
+    conexao.close()
+    flash("Folga removida. O dia voltou a aceitar agendamentos.", "sucesso")
+    return redirect(url_for("instrutores.folgas"))

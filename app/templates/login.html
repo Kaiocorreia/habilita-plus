@@ -1,10 +1,12 @@
 {% extends "base.html" %}
-{% from "_componentes.html" import campo_csrf %}
+{% from "_componentes.html" import campo_csrf, painel_marca %}
 {% block title %}Entrar · Habilita+{% endblock %}
 {% block description %}Entre na sua conta Habilita+ para buscar instrutores, agendar e acompanhar suas aulas.{% endblock %}
-{% block main_class %}conteudo-estreito{% endblock %}
+{% block main_class %}conteudo-auth{% endblock %}
 {% block content %}
 
+<div class="auth-layout">
+{{ painel_marca() }}
 <div class="painel-auth">
     <header class="cabecalho-auth">
         <h1>Bem-vindo de volta</h1>
@@ -35,6 +37,7 @@
     </form>
 
     <p class="rodape-auth">Ainda não tem conta? <a href="{{ url_for('auth.cadastro_tipo') }}">Criar conta</a></p>
+</div>
 </div>
 
 {% endblock %}

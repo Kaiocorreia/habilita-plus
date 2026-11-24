@@ -73,12 +73,14 @@
                 {% endblock %}
             </nav>
             <div class="barra-topo-conta">
-                <span class="barra-topo-nome">{{ session.get("usuario_nome", "") | primeiro_nome }}</span>
+                <a class="barra-topo-nome" href="{{ url_for('conta.minha_conta') }}" {{ 'aria-current=page' if rota == 'conta.minha_conta' }}>{{ icone("usuario") }}{{ session.get("usuario_nome", "") | primeiro_nome }}</a>
                 <form method="POST" action="{{ url_for('auth.logout') }}">
                     {{ campo_csrf() }}
                     <button type="submit" class="botao-fantasma botao-sm">{{ icone("sair") }}Sair</button>
                 </form>
             </div>
+            {# No celular a barra de baixo está cheia: a conta fica neste ícone. #}
+            <a class="atalho-conta" href="{{ url_for('conta.minha_conta') }}" aria-label="Minha conta" {{ 'aria-current=page' if rota == 'conta.minha_conta' }}>{{ icone("usuario") }}</a>
             {% elif rota not in ("auth.login",) %}
             <div class="barra-topo-conta">
                 <a class="botao-fantasma botao-sm" href="{{ url_for('auth.login') }}">Entrar</a>

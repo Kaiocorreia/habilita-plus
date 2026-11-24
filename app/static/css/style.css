@@ -1035,3 +1035,112 @@ a.dia:hover { background: var(--superficie-3); }
 
 @media (min-width: 560px) { .grade-imagens { grid-template-columns: repeat(4, 1fr); } }
 @media (min-width: 680px) { .metricas-3 { grid-template-columns: repeat(3, 1fr); } }
+
+/* ==========================================================================
+   Página de entrada: prévia do produto no hero
+   Montada com dados reais (instrutor mais bem avaliado e preços do banco).
+   ========================================================================== */
+
+.vitrine { margin: var(--esp-8) 0 0; padding: var(--esp-5); background: var(--tinta); border-radius: 28px; }
+.vitrine-palco { display: grid; gap: var(--esp-3); }
+.vitrine-cartao {
+    background: var(--superficie); color: var(--texto); border-radius: var(--raio-lg); padding: var(--esp-4);
+    box-shadow: 0 12px 32px rgba(0, 0, 0, .35);
+    animation: vitrine-entrar 520ms cubic-bezier(.2, .7, .3, 1) both;
+}
+.vitrine-cartao:nth-child(2) { animation-delay: 90ms; }
+.vitrine-cartao:nth-child(3) { animation-delay: 180ms; }
+@keyframes vitrine-entrar { from { opacity: 0; transform: translateY(14px); } }
+
+.vitrine-pessoa { display: flex; gap: var(--esp-3); align-items: center; }
+.vitrine-pessoa > div { display: grid; gap: 2px; min-width: 0; }
+.vitrine-pessoa strong { font-size: 17px; }
+.vitrine-pessoa span { display: flex; align-items: center; gap: 4px; font-size: var(--tipo-legenda); color: var(--texto-2); }
+.vitrine-pessoa span .icone { width: 15px; height: 15px; color: var(--sucesso); }
+.vitrine-nota { display: flex; align-items: center; gap: 6px; margin: var(--esp-3) 0 var(--esp-3); font-size: var(--tipo-legenda); }
+.vitrine-nota span { color: var(--texto-2); }
+
+.vitrine-rotulo { display: block; font-size: var(--tipo-mini); font-weight: 600; color: var(--texto-2); margin-bottom: var(--esp-2); }
+.vitrine-pilulas { display: flex; flex-wrap: wrap; gap: var(--esp-2); }
+.vitrine-pilulas span {
+    display: inline-grid; place-items: center; min-height: 38px; padding: 0 var(--esp-4);
+    border-radius: var(--raio-pilula); background: var(--superficie-2); font-weight: 600; font-variant-numeric: tabular-nums;
+}
+.vitrine-pilulas .ativo { background: var(--tinta); color: var(--sobre-tinta); }
+
+.vitrine-total > div { display: flex; justify-content: space-between; gap: var(--esp-3); padding: 4px 0; font-size: 15px; color: var(--texto-2); font-variant-numeric: tabular-nums; }
+.vitrine-total .vitrine-soma { margin-top: var(--esp-2); padding-top: var(--esp-3); border-top: 1px dashed var(--borda-forte, #CBCBCB); color: var(--texto); }
+.vitrine-soma strong { font-size: 22px; }
+.vitrine-botao {
+    display: grid; place-items: center; min-height: 48px; margin-top: var(--esp-3);
+    border-radius: var(--raio-pilula); background: var(--tinta); color: var(--sobre-tinta); font-weight: 600;
+}
+
+@media (min-width: 1024px) {
+    .entrada-hero.com-vitrine {
+        display: grid; grid-template-columns: minmax(0, 1.08fr) minmax(0, .92fr); gap: var(--esp-12);
+        align-items: center; max-width: none;
+    }
+    .entrada-hero.com-vitrine .entrada-titulo { font-size: clamp(44px, 4.4vw, 64px); }
+    .vitrine { margin: 0; padding: var(--esp-8) var(--esp-6); }
+    /* Composição em escada: cada cartão desloca um pouco, como telas sobrepostas. */
+    .vitrine-cartao:nth-child(1) { margin-right: var(--esp-8); }
+    .vitrine-cartao:nth-child(2) { margin-left: var(--esp-8); margin-right: var(--esp-4); }
+    .vitrine-cartao:nth-child(3) { margin-left: var(--esp-4); }
+}
+
+/* ==========================================================================
+   Entrada e cadastro: tela dividida no desktop
+   ========================================================================== */
+
+.conteudo-auth { max-width: 520px; }
+.auth-marca { display: none; }
+
+@media (min-width: 1024px) {
+    .conteudo-auth { max-width: 1040px; padding-top: var(--esp-12); }
+    .auth-layout {
+        display: grid; grid-template-columns: minmax(0, 1fr) minmax(0, 1fr); align-items: stretch;
+        border: 1px solid var(--borda); border-radius: 24px; overflow: hidden; background: var(--superficie);
+    }
+    .auth-layout .painel-auth { border: 0; border-radius: 0; margin: 0; padding: var(--esp-12) var(--esp-12); align-self: center; }
+    .auth-marca {
+        display: flex; flex-direction: column; gap: var(--esp-6); padding: var(--esp-12);
+        background: var(--tinta); color: var(--sobre-tinta);
+    }
+    .auth-marca-logo { font-size: 24px; font-weight: 700; }
+    .auth-marca-logo span { color: #7FA6FF; }
+    .auth-marca-titulo { font-size: 32px; font-weight: 700; line-height: 1.2; margin-top: auto; }
+    .auth-marca-lista { list-style: none; margin: 0; padding: 0; display: grid; gap: var(--esp-4); }
+    .auth-marca-lista li { display: flex; gap: var(--esp-3); align-items: flex-start; color: #D6D6D6; font-size: 16px; }
+    .auth-marca-lista .icone { flex: none; margin-top: 2px; color: var(--sobre-tinta); }
+}
+
+.vazio-compacto {
+    display: flex; gap: var(--esp-3); align-items: center; padding: var(--esp-4);
+    border: 1px dashed var(--borda-campo); border-radius: var(--raio-lg); color: var(--texto-2); font-size: 15px;
+}
+.vazio-compacto .icone { flex: none; color: var(--texto); }
+
+/* Conta, salvos, folgas, remarcação */
+.barra-topo-nome { text-decoration: none; color: inherit; display: inline-flex; align-items: center; gap: 6px; min-height: 44px; padding: 0 var(--esp-3); border-radius: var(--raio-pilula); }
+.barra-topo-nome:hover, .barra-topo-nome[aria-current="page"] { background: var(--superficie-3); }
+.barra-topo-nome .icone { width: 18px; height: 18px; }
+.atalho-conta {
+    margin-left: auto; display: inline-grid; place-items: center; width: 44px; height: 44px;
+    border-radius: 50%; background: var(--superficie-3); color: var(--texto);
+}
+.atalho-conta[aria-current="page"] { background: var(--tinta); color: var(--sobre-tinta); }
+@media (min-width: 1024px) { .atalho-conta { display: none; } }
+
+.atalhos-conta { display: flex; flex-wrap: wrap; gap: var(--esp-2); margin-bottom: var(--esp-2); }
+.secao-conta { margin-top: var(--esp-6); }
+.form-salvar { grid-column: 1 / -1; }
+.botao-salvar[aria-pressed="true"] .icone { color: var(--perigo); }
+.folga-form { display: flex; flex-wrap: wrap; gap: var(--esp-3); align-items: flex-end; }
+.folga-form .campo { flex: 1 1 220px; margin: 0; }
+.texto-alerta { display: inline-flex; align-items: center; gap: 4px; color: var(--alerta) !important; font-weight: 600; }
+.texto-alerta .icone { width: 16px; height: 16px; }
+.dia.folga { text-decoration: line-through; }
+.aviso-info .icone { flex: none; }
+/* Na coluna estreita das folgas, o botão "Remover" cabe ao lado da data. */
+.lista-folgas .linha-pessoa { flex-basis: 200px; }

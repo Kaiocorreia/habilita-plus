@@ -21,6 +21,12 @@ Desenvolvimento de Sistemas.
 4. **Locação de veículo adaptado** — cada profissional pode disponibilizar veículos para
    locação, incluindo modelos adaptados para pessoas com deficiência (preparado para uma
    futura parceria com locadora).
+5. **Rotina do aluno sem atrito** — salvar instrutores favoritos, remarcar uma aula em um
+   passo (a antiga só é cancelada quando a nova é confirmada) e adicionar a aula à agenda
+   do celular com lembrete de 2 horas (arquivo `.ics`, padrão aceito por Google Agenda,
+   Apple e Outlook).
+6. **Folgas do instrutor** — o profissional fecha dias específicos e o calendário dos
+   candidatos já mostra o dia como indisponível.
 
 ## Tecnologias
 
@@ -109,7 +115,9 @@ Todas as contas do seed usam a senha **`senha123`**.
 
 ## Modelo de dados
 
-O banco tem 10 tabelas e contempla os três tipos de relacionamento: 1:1, 1:N e N:N.
+O banco tem 14 tabelas e contempla os três tipos de relacionamento: 1:1, 1:N e N:N. O
+diagrama mostra as 12 do domínio; `configuracoes` e `acoes_gerenciais` são da gerência
+(veja *Área de gerência*).
 
 ```mermaid
 erDiagram
@@ -126,6 +134,9 @@ erDiagram
     veiculos ||--o{ instrutor_veiculos : "disponivel com"
     veiculos ||--o{ agendamentos : "usado na aula"
     agendamentos ||--o| avaliacoes : "permite avaliar"
+    usuarios ||--o{ favoritos : "salva"
+    instrutores ||--o{ favoritos : "salvo por"
+    instrutores ||--o{ folgas : "tira"
 
     usuarios {
         int id PK
@@ -206,6 +217,15 @@ erDiagram
         text comentario
         text data
     }
+    favoritos {
+        int usuario_id PK, FK
+        int instrutor_id PK, FK
+        text criado_em
+    }
+    folgas {
+        int instrutor_id PK, FK
+        text data PK
+    }
 ```
 
 **Como ler:** `||--o|` significa "um para zero-ou-um" (relação 1:1 opcional) e `||--o{`
@@ -279,6 +299,14 @@ O `agendamento_id` é `UNIQUE`, garantindo no máximo uma avaliação por aula r
 sempre que necessário. Guardar a média numa coluna criaria risco de o número ficar
 desatualizado a cada nova avaliação; calculando na hora, é impossível ficar inconsistente.
 
+### `favoritos` e `folgas`
+Duas tabelas de junção com chave primária composta. Em `favoritos`, o par
+`(usuario_id, instrutor_id)` impede salvar o mesmo instrutor duas vezes, e o botão só
+alterna (insere ou apaga). Em `folgas`, o par `(instrutor_id, data)` fecha um dia inteiro:
+o calendário mostra o dia como indisponível e o servidor recusa o pedido mesmo que alguém
+monte a requisição na mão. Aulas já marcadas naquele dia continuam valendo, e a tela de
+folgas avisa quando isso acontece.
+
 ## Telas
 
 | # | Tela | Rota |
@@ -300,12 +328,15 @@ desatualizado a cada nova avaliação; calculando na hora, é impossível ficar 
 | G5 | Gerência — configurações da plataforma | `/gerencia/configuracoes` |
 | G6 | Gerência — registro de ações | `/gerencia/registro` |
 | 10 | Busca com filtros | `/busca` |
-| 10b | Minhas aulas / Agenda do instrutor (próximas, histórico, cancelar, confirmar) | `/minhas-aulas` |
+| 10b | Minhas aulas / Agenda do instrutor (próximas, histórico, cancelar, confirmar, remarcar, `.ics`) | `/minhas-aulas` |
+| 10c | Dias de folga do instrutor | `/agenda/folgas` |
+| 10d | Minha conta (dados, preferências e troca de senha) | `/conta` |
 | 11 | Perfil do instrutor | `/instrutor/<id>` |
 | 11b | Editar perfil profissional | `/perfil/editar` |
 | 12 | Agendamento (calendário, horário, veículo) | `/instrutor/<id>/agendar` |
 | 13 | Confirmação | `/agendamento/confirmar` |
 | 14 | Sucesso | `/agendamento/<id>/sucesso` |
+| 14b | Arquivo de calendário da aula | `/agendamento/<id>/calendario.ics` |
 | 15 | Avaliação pós-aula | `/agendamento/<id>/avaliar` |
 | — | Páginas de erro (400, 404, 405, 500) e sem conexão | `/offline` |
 
@@ -348,13 +379,13 @@ habilita-plus/
 │       ├── manifest.json    configuração do PWA
 │       └── service-worker.js
 ├── database/
-│   ├── schema.sql           definição das 12 tabelas e 8 índices
+│   ├── schema.sql           definição das 14 tabelas e 8 índices
 │   ├── migrar.py            atualiza um banco existente sem perder dados
 │   ├── criar_gerente.py     cria a conta de gerente (não há cadastro pelo site)
 │   ├── db.py                conexão SQLite
 │   ├── init_db.py           cria o banco
 │   └── seed.py              popula com dados de exemplo (recusa apagar contas reais)
-├── tests/                   56 testes automatizados (app e gerência)
+├── tests/                   71 testes automatizados (app, gerência e recursos novos)
 ├── instance/habilita.db     o banco (gerado, não versionado)
 ├── requirements.txt
 └── run.py
@@ -397,6 +428,19 @@ seguinte. `app/agenda.py` usa o horário de Brasília para decidir o que é pass
 **Calendário sem JavaScript.** O calendário de agendamento é uma tabela HTML gerada pelo
 módulo `calendar` do Python, e cada dia é um link comum. Funciona com o botão Voltar do
 navegador e com leitores de tela — relevante num projeto cujo foco é acessibilidade.
+
+**Conclusão de aulas com intervalo.** As aulas passadas viram "concluídas" de forma
+preguiçosa, quando alguém abre uma página. Antes isso era um `UPDATE` a cada visualização;
+agora roda no máximo uma vez por minuto (`INTERVALO_CONCLUSAO`), o que tira escrita
+desnecessária do SQLite sem atrasar a avaliação de forma perceptível.
+
+**Remarcação atômica.** Remarcar cancela a aula antiga e cria a nova na mesma transação.
+Se o novo horário for tomado por outra pessoa entre a revisão e a confirmação, o índice
+parcial do banco recusa o `INSERT`, a transação é desfeita e a aula antiga continua
+marcada — o aluno nunca fica sem nenhuma das duas.
+
+**Calendário `.ics` em UTC.** O arquivo de agenda grava início e fim em UTC (com `Z`), então
+o celular mostra o horário certo em qualquer fuso, com um alarme 2 horas antes.
 
 ## Área de gerência
 
@@ -487,13 +531,16 @@ botão Compartilhar → "Adicionar à Tela de Início".
 python -m unittest discover -s tests -t . -v
 ```
 
-56 testes, usando um banco temporário (nunca tocam em `instance/habilita.db`). Cobrem:
+71 testes, usando um banco temporário (nunca tocam em `instance/habilita.db`). Cobrem:
 páginas públicas e de erro, proteção CSRF, cabeçalhos de segurança, senha fora do cookie,
 entradas inválidas que antes derrubavam o servidor, fluxo completo de agendamento,
 horário duplicado (pela aplicação e pelo índice parcial do banco), cancelamento,
 confirmação pelo instrutor, ciclo de vida até a avaliação, cadastro, edição de perfil,
 busca e, na gerência, o controle de acesso, o efeito de cada ação no site, a migração de
-um banco no formato antigo e a criação da conta de gerente. Usam só a biblioteca padrão (`unittest`), sem dependência nova.
+um banco no formato antigo e a criação da conta de gerente. Os recursos da revisão também
+têm teste: minha conta (dados, senha, preferências), salvos, folgas, remarcação (inclusive
+o caso em que o novo horário é tomado e a aula antiga precisa continuar valendo), arquivo
+`.ics` em UTC e a conclusão de aulas com intervalo. Usam só a biblioteca padrão (`unittest`), sem dependência nova.
 
 ## Publicação com HTTPS (PythonAnywhere)
 
@@ -635,8 +682,9 @@ Pontos deixados em aberto conscientemente, por estarem fora do escopo desta fase
   instalação em HTTPS (`localhost` é a única exceção). Acessando pelo IP local em HTTP, o
   "Adicionar à tela inicial" geralmente funciona, mas a instalação completa não. Veja a
   seção *Publicação com HTTPS* para resolver isso.
-- **Instrutor não define disponibilidade.** Todos os profissionais oferecem a mesma grade
-  fixa de horários (07:00–17:00). O passo natural seria uma tabela `disponibilidades`.
+- **Disponibilidade só por dia.** O instrutor fecha dias inteiros (folgas), mas a grade de
+  horários é a mesma para todos e definida pela gerência. O passo seguinte seria uma
+  tabela `disponibilidades` por dia da semana.
 - **Instrutor não cadastra veículos.** Quem cadastra e vincula veículos é a gerência; a
   edição de perfil do instrutor cobre valor, região, categorias e atendimento.
 - **Sem lembretes nem recuperação de senha.** Ambos dependem de um serviço de envio de

@@ -1,0 +1,128 @@
+{% extends "base.html" %}
+{% from "_componentes.html" import campo_csrf, cabecalho, icone %}
+{% block title %}Minha conta · Habilita+{% endblock %}
+{% block main_class %}conteudo-estreito{% endblock %}
+{% block content %}
+
+{{ cabecalho("Minha conta", subtitulo=usuario["email"]) }}
+
+{% if usuario["tipo"] == "instrutor" %}
+<nav class="atalhos-conta" aria-label="Atalhos do instrutor">
+    <a class="botao botao-secundario" href="{{ url_for('instrutores.editar_perfil') }}">{{ icone("editar") }}Perfil profissional</a>
+    <a class="botao botao-secundario" href="{{ url_for('instrutores.folgas') }}">{{ icone("calendario") }}Dias de folga</a>
+</nav>
+{% endif %}
+
+<section class="secao secao-conta" aria-labelledby="titulo-dados">
+    <h2 id="titulo-dados" class="titulo-secao">Dados pessoais</h2>
+    <form method="POST" action="{{ url_for('conta.salvar_dados') }}" class="formulario cartao">
+        {{ campo_csrf() }}
+        <div class="campo">
+            <label for="nome">Nome completo</label>
+            <input type="text" id="nome" name="nome" value="{{ usuario['nome'] }}" required maxlength="120" autocomplete="name">
+        </div>
+        <div class="campo">
+            <label for="email">E-mail</label>
+            <input type="email" id="email" value="{{ usuario['email'] }}" disabled aria-describedby="dica-email">
+            <p class="dica" id="dica-email">O e-mail é o seu login e não pode ser alterado aqui.</p>
+        </div>
+        {% if usuario["tipo"] != "gerente" %}
+        <div class="campo-duplo">
+            <div class="campo">
+                <label for="cidade">Cidade</label>
+                <select id="cidade" name="cidade" required>
+                    {% for cidade in cidades %}<option value="{{ cidade }}" {{ "selected" if usuario['cidade'] == cidade }}>{{ cidade }}</option>{% endfor %}
+                </select>
+            </div>
+            <div class="campo">
+                <label for="telefone">Celular <span class="opcional">(opcional)</span></label>
+                <div class="campo-prefixo">
+                    <span class="prefixo" aria-hidden="true">({{ ddd }})</span>
+                    <input type="tel" id="telefone" name="telefone" inputmode="numeric" autocomplete="tel-national"
+                           maxlength="15" placeholder="99999-9999" value="{{ telefone_local }}">
+                </div>
+            </div>
+        </div>
+        {% endif %}
+        <button type="submit" class="botao botao-primario" data-enviando="Salvando…">Salvar dados</button>
+    </form>
+</section>
+
+{% if usuario["tipo"] == "candidato" %}
+<section class="secao secao-conta" aria-labelledby="titulo-preferencias">
+    <h2 id="titulo-preferencias" class="titulo-secao">Preferências e acessibilidade</h2>
+    <p class="secao-ajuda">É o que a busca aplica quando você abre sem filtros.</p>
+    <form method="POST" action="{{ url_for('conta.salvar_preferencias') }}" class="formulario cartao">
+        {{ campo_csrf() }}
+        <fieldset class="grupo">
+            <legend>Categorias que você quer tirar</legend>
+            <div class="chips">
+                {% for categoria in categorias %}
+                <label class="chip"><input type="checkbox" name="categorias" value="{{ categoria }}" {{ "checked" if categoria in categorias_pretendidas }}>
+                    <span>{{ icone("check") }}CNH {{ categoria }}</span></label>
+                {% endfor %}
+            </div>
+        </fieldset>
+        <fieldset class="grupo">
+            <legend>Preferências de atendimento</legend>
+            <div class="opcoes">
+                {% for campo, rotulo in preferencias_opcoes %}
+                <label class="opcao opcao-check">
+                    <input type="checkbox" name="{{ campo }}" {{ "checked" if preferencias and preferencias[campo] }}>
+                    <span class="opcao-texto"><strong>{{ rotulo }}</strong></span>
+                </label>
+                {% endfor %}
+            </div>
+        </fieldset>
+        <div class="campo">
+            <label for="tipo_deficiencia">Deficiência</label>
+            <select id="tipo_deficiencia" name="tipo_deficiencia">
+                <option value="">Não tenho ou prefiro não informar</option>
+                {% for tipo in tipos_deficiencia %}
+                <option value="{{ tipo }}" {{ "selected" if acessibilidade and acessibilidade['tipo_deficiencia'] == tipo }}>{{ tipo }}</option>
+                {% endfor %}
+            </select>
+        </div>
+        <fieldset class="grupo">
+            <legend>Como prefere se comunicar</legend>
+            {% set canal_atual = acessibilidade['canal_comunicacao'] if acessibilidade else 'texto' %}
+            <div class="segmentado">
+                {% for valor, rotulo in canais.items() %}
+                <label><input type="radio" name="canal_comunicacao" value="{{ valor }}" {{ "checked" if canal_atual == valor }}><span>{{ rotulo }}</span></label>
+                {% endfor %}
+            </div>
+        </fieldset>
+        <label class="opcao opcao-check">
+            <input type="checkbox" name="precisa_veiculo_adaptado" {{ "checked" if acessibilidade and acessibilidade['precisa_veiculo_adaptado'] }}>
+            <span class="opcao-texto"><strong>Preciso de veículo adaptado</strong></span>
+        </label>
+        <button type="submit" class="botao botao-primario" data-enviando="Salvando…">Salvar preferências</button>
+    </form>
+</section>
+{% endif %}
+
+<section class="secao secao-conta" aria-labelledby="titulo-senha">
+    <h2 id="titulo-senha" class="titulo-secao">Senha</h2>
+    <form method="POST" action="{{ url_for('conta.trocar_senha') }}" class="formulario cartao">
+        {{ campo_csrf() }}
+        <div class="campo">
+            <label for="senha_atual">Senha atual</label>
+            <input type="password" id="senha_atual" name="senha_atual" required autocomplete="current-password">
+        </div>
+        <div class="campo-duplo">
+            <div class="campo">
+                <label for="senha_nova">Nova senha</label>
+                <input type="password" id="senha_nova" name="senha_nova" required minlength="{{ senha_minima }}"
+                       autocomplete="new-password" aria-describedby="dica-senha-nova">
+                <p class="dica" id="dica-senha-nova">Pelo menos {{ senha_minima }} caracteres.</p>
+            </div>
+            <div class="campo">
+                <label for="senha_confirmacao">Repita a nova senha</label>
+                <input type="password" id="senha_confirmacao" name="senha_confirmacao" required autocomplete="new-password">
+            </div>
+        </div>
+        <button type="submit" class="botao botao-secundario" data-enviando="Alterando…">Alterar senha</button>
+    </form>
+</section>
+
+{% endblock %}

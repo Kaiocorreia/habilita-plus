@@ -1,11 +1,13 @@
 {% extends "base.html" %}
-{% from "_componentes.html" import campo_csrf, progresso %}
+{% from "_componentes.html" import campo_csrf, progresso, painel_marca %}
 {% block title %}Categorias da CNH · Criar conta · Habilita+{% endblock %}
-{% block main_class %}conteudo-estreito{% endblock %}
+{% block main_class %}conteudo-auth{% endblock %}
 {% block content %}
 
 {% set descricoes = {"A": "Motos", "B": "Carros", "C": "Caminhões", "D": "Ônibus e vans", "E": "Carretas"} %}
 
+<div class="auth-layout">
+{{ painel_marca() }}
 <div class="painel-auth">
     {{ progresso(etapa, total_etapas) }}
     <header class="cabecalho-auth">
@@ -29,6 +31,7 @@
         </fieldset>
         <button type="submit" class="botao botao-primario botao-bloco">Continuar</button>
     </form>
+</div>
 </div>
 
 {% endblock %}

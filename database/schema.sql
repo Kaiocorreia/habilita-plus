@@ -124,6 +124,24 @@ CREATE TABLE acoes_gerenciais (
     FOREIGN KEY (gerente_id) REFERENCES usuarios (id)
 );
 
+-- Instrutores salvos pelo candidato (N:N entre usuários e instrutores).
+CREATE TABLE favoritos (
+    usuario_id      INTEGER NOT NULL,
+    instrutor_id    INTEGER NOT NULL,
+    criado_em       TEXT NOT NULL DEFAULT (datetime('now')),
+    PRIMARY KEY (usuario_id, instrutor_id),
+    FOREIGN KEY (usuario_id) REFERENCES usuarios (id) ON DELETE CASCADE,
+    FOREIGN KEY (instrutor_id) REFERENCES instrutores (id) ON DELETE CASCADE
+);
+
+-- Dias de folga: o instrutor não recebe agendamentos nessas datas.
+CREATE TABLE folgas (
+    instrutor_id    INTEGER NOT NULL,
+    data            TEXT NOT NULL,
+    PRIMARY KEY (instrutor_id, data),
+    FOREIGN KEY (instrutor_id) REFERENCES instrutores (id) ON DELETE CASCADE
+);
+
 -- Índice PARCIAL: impede duas aulas ativas no mesmo instrutor, data e horário.
 -- A cláusula WHERE é essencial — sem ela, uma aula cancelada continuaria
 -- ocupando o horário para sempre, já que a linha permanece na tabela.

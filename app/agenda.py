@@ -5,6 +5,9 @@ sistema já consideraria "amanhã" e liberaria ou bloquearia horários errados.
 """
 
 from datetime import date, datetime, time, timedelta, timezone
+from time import monotonic
+
+from flask import current_app, has_app_context
 
 from app.configuracoes import configuracoes
 
@@ -48,6 +51,9 @@ def data_agendavel(dia):
     return dia is not None and hoje() <= dia <= hoje() + timedelta(days=janela_dias())
 
 
+_ultima_conclusao = float("-inf")
+
+
 def concluir_aulas_passadas(conexao):
     """Marca como concluídas as aulas ativas que já terminaram.
 
@@ -55,7 +61,18 @@ def concluir_aulas_passadas(conexao):
     transição: uma aula real ficava 'agendada' para sempre e nunca podia ser
     avaliada. A atualização roda sob demanda, nas telas que exibem aulas, e é
     idempotente: executá-la várias vezes produz o mesmo resultado.
+
+    Roda no máximo uma vez por minuto (INTERVALO_CONCLUSAO): cada UPDATE trava o
+    arquivo do SQLite por um instante, e repeti-lo a cada página aberta criaria
+    fila quando vários alunos navegam ao mesmo tempo. Uma aula que termina fica,
+    no pior caso, um minuto a mais como "agendada".
     """
+    global _ultima_conclusao
+    intervalo = current_app.config.get("INTERVALO_CONCLUSAO", 60) if has_app_context() else 0
+    if intervalo and monotonic() - _ultima_conclusao < intervalo:
+        return
+    _ultima_conclusao = monotonic()
+
     terminou_ate = agora() - DURACAO_AULA
     conexao.execute(
         """

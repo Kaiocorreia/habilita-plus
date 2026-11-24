@@ -1,10 +1,12 @@
 {% extends "base.html" %}
-{% from "_componentes.html" import campo_csrf, icone %}
+{% from "_componentes.html" import campo_csrf, icone, painel_marca %}
 {% block title %}Criar conta · Habilita+{% endblock %}
 {% block description %}Crie sua conta no Habilita+ como candidato à CNH ou como instrutor de autoescola no Espírito Santo.{% endblock %}
-{% block main_class %}conteudo-estreito{% endblock %}
+{% block main_class %}conteudo-auth{% endblock %}
 {% block content %}
 
+<div class="auth-layout">
+{{ painel_marca() }}
 <div class="painel-auth">
     <header class="cabecalho-auth">
         <h1>Criar conta</h1>
@@ -38,6 +40,7 @@
     </form>
 
     <p class="rodape-auth">Já tem conta? <a href="{{ url_for('auth.login') }}">Entrar</a></p>
+</div>
 </div>
 
 {% endblock %}

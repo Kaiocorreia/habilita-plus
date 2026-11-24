@@ -37,6 +37,24 @@ CREATE TABLE IF NOT EXISTS acoes_gerenciais (
     FOREIGN KEY (gerente_id) REFERENCES usuarios (id)
 );
 CREATE INDEX IF NOT EXISTS idx_acoes_gerenciais_data ON acoes_gerenciais (data);
+
+-- Instrutores salvos pelo candidato (N:N entre usuários e instrutores).
+CREATE TABLE IF NOT EXISTS favoritos (
+    usuario_id      INTEGER NOT NULL,
+    instrutor_id    INTEGER NOT NULL,
+    criado_em       TEXT NOT NULL DEFAULT (datetime('now')),
+    PRIMARY KEY (usuario_id, instrutor_id),
+    FOREIGN KEY (usuario_id) REFERENCES usuarios (id) ON DELETE CASCADE,
+    FOREIGN KEY (instrutor_id) REFERENCES instrutores (id) ON DELETE CASCADE
+);
+
+-- Dias de folga: o instrutor não recebe agendamentos nessas datas.
+CREATE TABLE IF NOT EXISTS folgas (
+    instrutor_id    INTEGER NOT NULL,
+    data            TEXT NOT NULL,
+    PRIMARY KEY (instrutor_id, data),
+    FOREIGN KEY (instrutor_id) REFERENCES instrutores (id) ON DELETE CASCADE
+);
 """
 
 
@@ -68,7 +86,7 @@ def pendencias(conexao):
         faltando.append("instrutores.ativo")
     if "oculta" not in _colunas(conexao, "avaliacoes"):
         faltando.append("avaliacoes.oculta")
-    for tabela in ("configuracoes", "acoes_gerenciais"):
+    for tabela in ("configuracoes", "acoes_gerenciais", "favoritos", "folgas"):
         if _sql_da_tabela(conexao, tabela) is None:
             faltando.append(f"tabela {tabela}")
     return faltando

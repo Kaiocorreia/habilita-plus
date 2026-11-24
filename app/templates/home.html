@@ -57,9 +57,23 @@
             {{ status_aula(aula["status"]) }}
         </a>
         {% else %}
-        {{ estado_vazio("Nenhuma aula marcada", "Escolha um instrutor abaixo e agende em poucos toques.") }}
+        {# Compacto de propósito: um quadro vazio grande empurrava os instrutores
+           para fora da primeira tela no celular. #}
+        <p class="vazio-compacto">{{ icone("calendario") }}<span>Nenhuma aula marcada. Escolha um instrutor abaixo para começar.</span></p>
         {% endfor %}
     </section>
+
+    {% if salvos %}
+    <section class="secao" aria-labelledby="titulo-salvos">
+        <div class="secao-cabecalho">
+            <h2 id="titulo-salvos" class="titulo-secao">Seus salvos</h2>
+            <a href="{{ url_for('busca.buscar', salvos='on', ordenar='avaliacao') }}">Ver na busca</a>
+        </div>
+        <div class="grade-cartoes">
+            {% for instrutor in salvos %}{{ cartao_instrutor(instrutor) }}{% endfor %}
+        </div>
+    </section>
+    {% endif %}
 
     <section class="secao" aria-labelledby="titulo-destaques">
         <div class="secao-cabecalho">

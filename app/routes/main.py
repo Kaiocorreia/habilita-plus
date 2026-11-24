@@ -47,8 +47,23 @@ def splash():
                (SELECT COUNT(*) FROM avaliacoes WHERE oculta = 0)    AS avaliacoes
         """
     ).fetchone()
+
+    # A prévia do hero mostra um instrutor DE VERDADE (o mais bem avaliado entre os
+    # verificados) e um total calculado com preços reais, nunca dados inventados.
+    vitrine = conexao.execute(
+        SELECT_INSTRUTORES + f" WHERE i.ativo = 1 AND i.verificado = 1 GROUP BY i.id ORDER BY {ORDEM_RELEVANCIA} LIMIT 1"
+    ).fetchone()
+    veiculo = None
+    if vitrine:
+        veiculo = conexao.execute(
+            """SELECT v.marca, v.modelo, v.valor_locacao FROM veiculos v
+               JOIN instrutor_veiculos iv ON iv.veiculo_id = v.id
+               WHERE iv.instrutor_id = ?
+               ORDER BY (v.categoria_cnh != 'B'), v.valor_locacao LIMIT 1""",  # carro antes de moto
+            (vitrine["id"],),
+        ).fetchone()
     conexao.close()
-    return render_template("splash.html", numeros=numeros)
+    return render_template("splash.html", numeros=numeros, vitrine=vitrine, veiculo_vitrine=veiculo)
 
 
 @main_bp.route("/service-worker.js")
@@ -58,6 +73,15 @@ def service_worker():
     resposta = send_from_directory(current_app.static_folder, "service-worker.js")
     resposta.headers["Service-Worker-Allowed"] = "/"
     resposta.headers["Cache-Control"] = "no-cache"
+    return resposta
+
+
+@main_bp.route("/favicon.ico")
+def favicon():
+    # Navegadores pedem /favicon.ico por conta própria, mesmo com <link rel="icon">.
+    # Sem esta rota, cada página gerava um 404 a mais no servidor.
+    resposta = send_from_directory(current_app.static_folder, "icons/icone-192.png", mimetype="image/png")
+    resposta.headers["Cache-Control"] = "public, max-age=604800"
     return resposta
 
 
@@ -113,6 +137,13 @@ def home():
 
     if usuario["tipo"] == "candidato":
         contexto["instrutores"] = conexao.execute(CONSULTA_DESTAQUES).fetchall()
+        contexto["salvos"] = conexao.execute(
+            SELECT_INSTRUTORES + f"""
+            JOIN favoritos f ON f.instrutor_id = i.id AND f.usuario_id = ?
+            WHERE i.ativo = 1 GROUP BY i.id ORDER BY MAX(f.criado_em) DESC LIMIT 6
+            """,
+            (usuario["id"],),
+        ).fetchall()
         contexto["proximas"] = conexao.execute(
             SELECT_AULAS + """
             WHERE ag.candidato_id = ? AND ag.status IN ('agendado', 'confirmado')

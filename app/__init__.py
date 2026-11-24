@@ -66,6 +66,7 @@ def create_app():
     from app.routes.agendamentos import agendamentos_bp
     from app.routes.avaliacoes import avaliacoes_bp
     from app.routes.gerencia import gerencia_bp
+    from app.routes.conta import conta_bp
 
     app.register_blueprint(main_bp)
     app.register_blueprint(auth_bp)
@@ -74,6 +75,7 @@ def create_app():
     app.register_blueprint(agendamentos_bp)
     app.register_blueprint(avaliacoes_bp)
     app.register_blueprint(gerencia_bp)
+    app.register_blueprint(conta_bp)
 
     @app.context_processor
     def aviso_da_gerencia():

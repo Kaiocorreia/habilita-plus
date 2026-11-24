@@ -1,9 +1,11 @@
 {% extends "base.html" %}
-{% from "_componentes.html" import campo_csrf, progresso %}
+{% from "_componentes.html" import campo_csrf, progresso, painel_marca %}
 {% block title %}Perfil profissional · Criar conta · Habilita+{% endblock %}
-{% block main_class %}conteudo-estreito{% endblock %}
+{% block main_class %}conteudo-auth{% endblock %}
 {% block content %}
 
+<div class="auth-layout">
+{{ painel_marca() }}
 <div class="painel-auth">
     {{ progresso(etapa, total_etapas) }}
     <header class="cabecalho-auth">
@@ -18,6 +20,7 @@
     </form>
 
     <p class="nota-rodape">Seu perfil aparece nas buscas desde já, com o selo “Em análise” até a equipe verificar seus documentos.</p>
+</div>
 </div>
 
 {% endblock %}

@@ -9,10 +9,14 @@
 <header class="cabecalho-pagina cabecalho-com-pessoa">
     {{ foto(instrutor["foto_url"], instrutor["nome"], "sm") }}
     <div>
-        <h1>Agendar aula</h1>
+        <h1>{{ "Remarcar aula" if remarcando else "Agendar aula" }}</h1>
         <p class="cabecalho-subtitulo">com {{ instrutor["nome"] }} · {{ instrutor["valor_aula"] | moeda }} por aula</p>
     </div>
 </header>
+
+{% if remarcando %}
+<div class="aviso aviso-info">{{ icone("trocar") }}<p>Remarcando a aula de <strong>{{ remarcando['data_formatada'] }} às {{ remarcando['horario'] }}</strong>. Ela só é cancelada quando você confirmar o novo horário.</p></div>
+{% endif %}
 
 <ol class="trilha" aria-label="Etapas do agendamento">
     <li class="{{ 'atual' if not data_escolhida else 'feita' }}">Dia</li>
@@ -24,13 +28,13 @@
     <section class="cartao calendario" aria-labelledby="titulo-mes">
         <div class="calendario-topo">
             {% if mes_anterior %}
-            <a class="botao-icone" href="{{ url_for('agendamentos.escolher', instrutor_id=instrutor['id'], mes=mes_anterior) }}" aria-label="Mês anterior">{{ icone("voltar") }}</a>
+            <a class="botao-icone" href="{{ url_for('agendamentos.escolher', instrutor_id=instrutor['id'], mes=mes_anterior, remarcar=remarcando['id'] if remarcando else None) }}" aria-label="Mês anterior">{{ icone("voltar") }}</a>
             {% else %}
             <span class="botao-icone desativado" aria-hidden="true">{{ icone("voltar") }}</span>
             {% endif %}
             <h2 id="titulo-mes">{{ nome_mes | capitalize }} {{ ano }}</h2>
             {% if mes_seguinte %}
-            <a class="botao-icone" href="{{ url_for('agendamentos.escolher', instrutor_id=instrutor['id'], mes=mes_seguinte) }}" aria-label="Próximo mês">{{ icone("avancar") }}</a>
+            <a class="botao-icone" href="{{ url_for('agendamentos.escolher', instrutor_id=instrutor['id'], mes=mes_seguinte, remarcar=remarcando['id'] if remarcando else None) }}" aria-label="Próximo mês">{{ icone("avancar") }}</a>
             {% else %}
             <span class="botao-icone desativado" aria-hidden="true">{{ icone("avancar") }}</span>
             {% endif %}
@@ -50,12 +54,14 @@
                     {% for dia in semana %}
                     <td>
                         {% if dia is none %}
+                        {% elif dia.isoformat() in folgas %}
+                            <span class="dia indisponivel folga" title="Folga do instrutor">{{ dia.day }}<span class="oculto"> (folga)</span></span>
                         {% elif dia < hoje or dia > limite %}
                             <span class="dia indisponivel">{{ dia.day }}</span>
                         {% else %}
                             {% set escolhido = data_escolhida == dia.isoformat() %}
                             <a class="dia {{ 'escolhido' if escolhido }} {{ 'hoje' if dia == hoje }}"
-                               href="{{ url_for('agendamentos.escolher', instrutor_id=instrutor['id'], mes=mes, data=dia.isoformat()) }}#horarios"
+                               href="{{ url_for('agendamentos.escolher', instrutor_id=instrutor['id'], mes=mes, data=dia.isoformat(), remarcar=remarcando['id'] if remarcando else None) }}#horarios"
                                aria-label="{{ dia | extenso }}{{ ', hoje' if dia == hoje }}"
                                {{ 'aria-current=date' if escolhido }}>{{ dia.day }}</a>
                         {% endif %}
@@ -72,6 +78,7 @@
         <form method="POST" action="{{ url_for('agendamentos.revisar', instrutor_id=instrutor['id']) }}" class="formulario">
             {{ campo_csrf() }}
             <input type="hidden" name="data" value="{{ data_escolhida }}">
+            {% if remarcando %}<input type="hidden" name="remarcar" value="{{ remarcando['id'] }}">{% endif %}
 
             <fieldset class="grupo cartao">
                 <legend>Horário <span class="legenda-detalhe">{{ data_extenso }}</span></legend>

@@ -217,6 +217,7 @@ class TestMigracao(base.BaseTeste):
         antigo = re.sub(r"\n\s*-- 1 = ocultada.*?\n\s*oculta .*?\n", "\n", antigo)
         antigo = re.sub(r"-- Configurações da plataforma.*?(?=-- Índice PARCIAL)", "", antigo, flags=re.S)
         antigo = antigo.replace("CREATE INDEX idx_acoes_gerenciais_data ON acoes_gerenciais (data);", "")
+        antigo = re.sub(r"-- Instrutores salvos pelo candidato.*?(?=-- Índice PARCIAL)", "", antigo, flags=re.S)
         self.assertNotIn("gerente", antigo)
 
         with tempfile.TemporaryDirectory() as pasta:
@@ -232,7 +233,7 @@ class TestMigracao(base.BaseTeste):
             modulo_migrar.DB_PATH = modulo_db.DB_PATH = caminho
             try:
                 feito = modulo_migrar.migrar(silencioso=True)
-                self.assertEqual(len(feito), 5)
+                self.assertEqual(len(feito), 7)
                 self.assertEqual(modulo_migrar.migrar(silencioso=True), [])
             finally:
                 modulo_migrar.DB_PATH, modulo_db.DB_PATH = originais

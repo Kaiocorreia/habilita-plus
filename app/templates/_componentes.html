@@ -121,3 +121,17 @@
     {% if acao_url %}<a class="botao botao-secundario" href="{{ acao_url }}">{{ acao_rotulo }}</a>{% endif %}
 </div>
 {%- endmacro %}
+
+{# Painel preto ao lado dos formulários de entrada e cadastro (só no desktop).
+   Decorativo para quem usa leitor de tela: o conteúdo útil está no formulário. #}
+{% macro painel_marca() -%}
+<aside class="auth-marca" aria-hidden="true">
+    <span class="auth-marca-logo">Habilita<span>+</span></span>
+    <p class="auth-marca-titulo">A sua CNH, sem telefonema e sem surpresa no preço.</p>
+    <ul class="auth-marca-lista">
+        <li>{{ icone("dinheiro") }}Aula e locação do carro somadas antes de confirmar</li>
+        <li>{{ icone("acessivel") }}Filtros de Libras, veículo adaptado e instrutoras mulheres</li>
+        <li>{{ icone("estrela") }}Avaliações só de quem fez a aula, uma por aula</li>
+    </ul>
+</aside>
+{%- endmacro %}

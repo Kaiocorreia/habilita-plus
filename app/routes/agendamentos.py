@@ -1,11 +1,11 @@
 import calendar
 import sqlite3
-from datetime import date, timedelta
+from datetime import date, datetime, timedelta, timezone
 
-from flask import Blueprint, abort, flash, g, redirect, render_template, request, session, url_for
+from flask import Blueprint, Response, abort, flash, g, redirect, render_template, request, session, url_for
 
-from app.agenda import (concluir_aulas_passadas, data_agendavel, data_por_extenso,
-                        horario_ja_passou, hoje, janela_dias, ler_data)
+from app.agenda import (DURACAO_AULA, concluir_aulas_passadas, data_agendavel, data_por_extenso,
+                        horario_ja_passou, hoje, inicio_da_aula, janela_dias, ler_data)
 from app.configuracoes import configuracoes
 from app.constantes import DIAS_SEMANA_PT, MESES_PT
 from app.consultas import SELECT_AULAS, VEICULOS_DO_INSTRUTOR
@@ -39,6 +39,26 @@ def _horarios_do_candidato(conexao, candidato_id, dia):
     )}
 
 
+def _folgas(conexao, instrutor_id):
+    return {linha["data"] for linha in conexao.execute(
+        "SELECT data FROM folgas WHERE instrutor_id = ? AND data >= ?", (instrutor_id, hoje().isoformat())
+    )}
+
+
+def aula_para_remarcar(conexao, aula_id, candidato_id, instrutor_id):
+    """A aula que o candidato quer remarcar, se ainda for possível; senão None."""
+    if not aula_id:
+        return None
+    aula = conexao.execute(
+        f"""SELECT id, data, horario, strftime('%d/%m/%Y', data) AS data_formatada FROM agendamentos
+            WHERE id = ? AND candidato_id = ? AND instrutor_id = ? AND status IN {ATIVAS}""",
+        (aula_id, candidato_id, instrutor_id),
+    ).fetchone()
+    if aula is None or horario_ja_passou(date.fromisoformat(aula["data"]), aula["horario"]):
+        return None
+    return aula
+
+
 def validar_pedido(conexao, instrutor_id, data_texto, horario, veiculo_texto, candidato_id):
     """Confere um pedido de aula. Devolve (pedido, erro); exatamente um deles é None.
 
@@ -53,6 +73,8 @@ def validar_pedido(conexao, instrutor_id, data_texto, horario, veiculo_texto, ca
     if not data_agendavel(dia):
         return None, f"Escolha uma data entre hoje e os próximos {janela_dias()} dias."
 
+    if dia.isoformat() in _folgas(conexao, instrutor_id):
+        return None, "O instrutor está de folga nesse dia. Escolha outra data."
     if horario not in configuracoes()["horarios"]:
         return None, "Escolha um dos horários disponíveis."
     if horario_ja_passou(dia, horario):
@@ -102,8 +124,11 @@ def escolher(instrutor_id):
     hoje_ = hoje()
     limite = hoje_ + timedelta(days=janela_dias())
 
+    folgas = _folgas(conexao, instrutor_id)
+    remarcando = aula_para_remarcar(conexao, request.args.get("remarcar", type=int), g.usuario["id"], instrutor_id)
+
     dia_escolhido = ler_data(request.args.get("data"))
-    if not data_agendavel(dia_escolhido):
+    if not data_agendavel(dia_escolhido) or (dia_escolhido and dia_escolhido.isoformat() in folgas):
         dia_escolhido = None
 
     # Mês exibido: o da URL, se válido e dentro da janela; senão o do dia escolhido
@@ -155,6 +180,8 @@ def escolher(instrutor_id):
         horarios=horarios,
         horarios_livres=sum(1 for h in horarios if not h["indisponivel"]),
         horario_marcado=request.args.get("horario", ""),
+        folgas=folgas,
+        remarcando=remarcando,
     )
 
 
@@ -176,11 +203,13 @@ def revisar(instrutor_id):
         return redirect(url_for("agendamentos.escolher", instrutor_id=instrutor_id,
                                 data=data_texto if ler_data(data_texto) else None))
 
+    remarcar = request.form.get("remarcar", type=int)
     session["agendamento"] = {
         "instrutor_id": instrutor_id,
         "data": pedido["dia"].isoformat(),
         "horario": horario,
         "veiculo_id": pedido["veiculo"]["id"] if pedido["veiculo"] else "",
+        "remarcar": remarcar,
     }
     return redirect(url_for("agendamentos.confirmar"))
 
@@ -209,9 +238,14 @@ def confirmar():
 
     instrutor, veiculo = pedido["instrutor"], pedido["veiculo"]
     valor_locacao = veiculo["valor_locacao"] if veiculo else 0.0
+    remarcando = aula_para_remarcar(conexao, pendente.get("remarcar"), g.usuario["id"], instrutor["id"])
 
     if request.method == "POST":
         try:
+            # Remarcar = cancelar a antiga + criar a nova, na mesma transação: se a
+            # nova falhar (horário tomado um segundo antes), a antiga NÃO é cancelada.
+            if remarcando:
+                conexao.execute("UPDATE agendamentos SET status = 'cancelado' WHERE id = ?", (remarcando["id"],))
             # Os valores são COPIADOS para o agendamento: se o instrutor mudar o
             # preço amanhã, esta aula continua pelo valor combinado hoje.
             cursor = conexao.execute(
@@ -236,6 +270,8 @@ def confirmar():
 
         conexao.close()
         session.pop("agendamento", None)
+        if remarcando:
+            flash(f"Aula remarcada. O horário de {remarcando['data_formatada']} às {remarcando['horario']} foi liberado.", "sucesso")
         return redirect(url_for("agendamentos.sucesso", agendamento_id=cursor.lastrowid))
 
     conexao.close()
@@ -248,6 +284,7 @@ def confirmar():
         horario=pedido["horario"],
         valor_locacao=valor_locacao,
         total=instrutor["valor_aula"] + valor_locacao,
+        remarcando=remarcando,
     )
 
 
@@ -362,3 +399,57 @@ def sucesso(agendamento_id):
         data_extenso=data_por_extenso(date.fromisoformat(aula["data"])),
         total=aula["valor"] + aula["valor_locacao"],
     )
+
+
+def _escapar_ics(texto):
+    # RFC 5545: barra, ponto e vírgula e vírgula são escapados; quebra de linha vira \n.
+    return (texto or "").replace("\\", "\\\\").replace(";", "\\;").replace(",", "\\,").replace("\n", "\\n")
+
+
+@agendamentos_bp.route("/agendamento/<int:agendamento_id>/calendario.ics")
+@exige_login()
+def calendario_ics(agendamento_id):
+    """A aula num arquivo de calendário (iCalendar), para o celular ou o Google Agenda.
+
+    Não depende de nenhum serviço externo: é um arquivo de texto no padrão RFC 5545.
+    """
+    conexao = get_connection()
+    aula = conexao.execute(
+        SELECT_AULAS + f" WHERE ag.id = ? AND ag.status IN {ATIVAS} AND (ag.candidato_id = ? OR i.usuario_id = ?)",
+        (agendamento_id, g.usuario["id"], g.usuario["id"]),
+    ).fetchone()
+    regiao = None
+    if aula:
+        regiao = conexao.execute(
+            "SELECT COALESCE(i.regiao_atuacao, u.cidade) FROM instrutores i JOIN usuarios u ON u.id = i.usuario_id WHERE i.id = ?",
+            (aula["instrutor_id"],),
+        ).fetchone()[0]
+    conexao.close()
+    if aula is None:
+        abort(404)
+
+    inicio = inicio_da_aula(date.fromisoformat(aula["data"]), aula["horario"]).astimezone(timezone.utc)
+    fim = inicio + DURACAO_AULA
+    formato = "%Y%m%dT%H%M%SZ"
+    eh_instrutor = aula["nome_candidato"] and g.usuario["tipo"] == "instrutor"
+    com_quem = aula["nome_candidato"] if eh_instrutor else aula["nome_instrutor"]
+    veiculo = f"{aula['marca']} {aula['modelo']}" if aula["marca"] else "Veículo próprio"
+    total = f"R$ {aula['valor'] + aula['valor_locacao']:.2f}".replace(".", ",")
+
+    linhas = [
+        "BEGIN:VCALENDAR", "VERSION:2.0", "PRODID:-//Habilita+//Aulas//PT", "CALSCALE:GREGORIAN",
+        "BEGIN:VEVENT",
+        f"UID:aula-{aula['id']}@habilitaplus",
+        f"DTSTAMP:{datetime.now(timezone.utc).strftime(formato)}",
+        f"DTSTART:{inicio.strftime(formato)}",
+        f"DTEND:{fim.strftime(formato)}",
+        f"SUMMARY:{_escapar_ics('Aula de direção com ' + com_quem)}",
+        f"DESCRIPTION:{_escapar_ics(f'Veículo: {veiculo}. Total: {total}. Agendado pelo Habilita+.')}",
+        f"LOCATION:{_escapar_ics(regiao)}",
+        "STATUS:" + ("CONFIRMED" if aula["status"] == "confirmado" else "TENTATIVE"),
+        "BEGIN:VALARM", "TRIGGER:-PT2H", "ACTION:DISPLAY", "DESCRIPTION:Aula de direção em 2 horas", "END:VALARM",
+        "END:VEVENT", "END:VCALENDAR",
+    ]
+    resposta = Response("\r\n".join(linhas) + "\r\n", mimetype="text/calendar")
+    resposta.headers["Content-Disposition"] = f'attachment; filename="aula-habilita-{aula["data"]}.ics"'
+    return resposta

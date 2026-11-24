@@ -29,6 +29,7 @@
     {% if contato %}
     <a class="botao botao-primario botao-bloco" href="{{ contato }}" target="_blank" rel="noopener noreferrer">{{ icone("conversa") }}Falar com o instrutor no WhatsApp</a>
     {% endif %}
+    <a class="botao botao-secundario botao-bloco" href="{{ url_for('agendamentos.calendario_ics', agendamento_id=aula['id']) }}">{{ icone("baixar") }}Adicionar à agenda do celular</a>
     <a class="botao botao-secundario botao-bloco" href="{{ url_for('agendamentos.minhas_aulas') }}">Ver minhas aulas</a>
     <a class="botao-link" href="{{ url_for('busca.buscar') }}">Agendar outra aula</a>
 </div>

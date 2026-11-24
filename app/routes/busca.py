@@ -82,10 +82,11 @@ def ler_filtros(argumentos):
     }
     for chave in FILTROS_DE_ATENDIMENTO:
         filtros[chave] = chave in argumentos
+    filtros["salvos"] = "salvos" in argumentos
     return filtros
 
 
-def montar_consulta(filtros):
+def montar_consulta(filtros, usuario_id=None):
     # Perfis ainda não verificados também aparecem (marcados como "Em análise"),
     # senão quem acabou de se cadastrar como instrutor ficaria invisível no site.
     condicoes = ["i.ativo = 1"]
@@ -117,6 +118,10 @@ def montar_consulta(filtros):
         if filtros[chave]:
             condicoes.append(f"{coluna} = 1")
 
+    if filtros.get("salvos") and usuario_id:
+        condicoes.append("EXISTS (SELECT 1 FROM favoritos fv WHERE fv.instrutor_id = i.id AND fv.usuario_id = ?)")
+        parametros.append(usuario_id)
+
     sql = SELECT_INSTRUTORES + " WHERE " + " AND ".join(condicoes) + " GROUP BY i.id"
 
     # HAVING, e não WHERE: a média só existe depois do GROUP BY.
@@ -143,14 +148,14 @@ def buscar():
             filtros.update(salvas)
             preferencias_aplicadas = True
 
-    sql, parametros = montar_consulta(filtros)
+    sql, parametros = montar_consulta(filtros, g.usuario["id"])
     conexao = get_connection()
     instrutores = conexao.execute(sql, parametros).fetchall()
     conexao.close()
 
     filtros_ativos = sum(
         1 for chave in ("q", "cidade", "categoria", "preco_maximo", "nota_minima") if filtros[chave]
-    ) + sum(1 for chave in FILTROS_DE_ATENDIMENTO if filtros[chave])
+    ) + sum(1 for chave in FILTROS_DE_ATENDIMENTO if filtros[chave]) + int(filtros["salvos"])
 
     return render_template(
         "busca.html",

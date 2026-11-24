@@ -4,12 +4,16 @@
 {% block main_class %}conteudo-estreito{% endblock %}
 {% block content %}
 
-<a class="link-voltar" href="{{ url_for('agendamentos.escolher', instrutor_id=instrutor['id'], data=data, horario=horario) }}">{{ icone("voltar") }}Alterar</a>
+<a class="link-voltar" href="{{ url_for('agendamentos.escolher', instrutor_id=instrutor['id'], data=data, horario=horario, remarcar=remarcando['id'] if remarcando else None) }}">{{ icone("voltar") }}Alterar</a>
 
 <header class="cabecalho-pagina">
     <h1>Confira e confirme</h1>
     <p class="cabecalho-subtitulo">Nada é cobrado pelo Habilita+. O pagamento é combinado direto com o instrutor.</p>
 </header>
+
+{% if remarcando %}
+<div class="aviso aviso-info">{{ icone("trocar") }}<p>Ao confirmar, a aula de <strong>{{ remarcando['data_formatada'] }} às {{ remarcando['horario'] }}</strong> é cancelada e o horário dela fica livre. O valor é o atual do instrutor.</p></div>
+{% endif %}
 
 <ol class="trilha" aria-label="Etapas do agendamento">
     <li class="feita">Dia</li>
@@ -41,7 +45,7 @@
 
 <form method="POST" class="formulario">
     {{ campo_csrf() }}
-    <button type="submit" class="botao botao-primario botao-bloco botao-lg" data-enviando="Agendando…">Confirmar agendamento</button>
+    <button type="submit" class="botao botao-primario botao-bloco botao-lg" data-enviando="Agendando…">{{ "Confirmar remarcação" if remarcando else "Confirmar agendamento" }}</button>
 </form>
 <p class="nota-rodape">Se precisar, você pode cancelar em Minhas aulas até o horário de início.</p>
 
