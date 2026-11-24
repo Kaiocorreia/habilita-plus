@@ -1,23 +1,34 @@
 {% extends "base.html" %}
-{% block title %}Categorias da CNH · Habilita+{% endblock %}
+{% from "_componentes.html" import campo_csrf, progresso %}
+{% block title %}Categorias da CNH · Criar conta · Habilita+{% endblock %}
+{% block main_class %}conteudo-estreito{% endblock %}
 {% block content %}
-<div class="card">
-    <div class="cabecalho-tela">
-        <p class="progresso-etapas">Etapa 2 de 4</p>
-        <h1>Categorias pretendidas</h1>
-        <p class="texto-secundario">Quais categorias de CNH você quer tirar? Pode marcar mais de uma.</p>
-    </div>
 
-    <form method="POST">
-        <div class="opcoes-grade">
-            {% for categoria in categorias %}
-            <label>
-                <input type="checkbox" name="categorias" value="{{ categoria }}">
-                {{ categoria }}
-            </label>
-            {% endfor %}
-        </div>
-        <button type="submit" class="botao botao-primario">Continuar</button>
+{% set descricoes = {"A": "Motos", "B": "Carros", "C": "Caminhões", "D": "Ônibus e vans", "E": "Carretas"} %}
+
+<div class="painel-auth">
+    {{ progresso(etapa, total_etapas) }}
+    <header class="cabecalho-auth">
+        <h1>Qual CNH você quer tirar?</h1>
+        <p>Pode marcar mais de uma — muita gente tira A e B juntas.</p>
+    </header>
+
+    <form method="POST" class="formulario">
+        {{ campo_csrf() }}
+        <fieldset class="grupo">
+            <legend class="oculto">Categorias pretendidas</legend>
+            <div class="grade-categorias">
+                {% for categoria in categorias %}
+                <label class="opcao-categoria">
+                    <input type="checkbox" name="categorias" value="{{ categoria }}" {{ "checked" if categoria in selecionadas }}>
+                    <strong>{{ categoria }}</strong>
+                    <span>{{ descricoes[categoria] }}</span>
+                </label>
+                {% endfor %}
+            </div>
+        </fieldset>
+        <button type="submit" class="botao botao-primario botao-bloco">Continuar</button>
     </form>
 </div>
+
 {% endblock %}

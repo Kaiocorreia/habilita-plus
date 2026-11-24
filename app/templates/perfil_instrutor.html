@@ -1,152 +1,147 @@
 {% extends "base.html" %}
-{% from "_cartao_instrutor.html" import iniciais, estrelas, foto %}
-{% block title %}{{ instrutor["nome"] }} · Habilita+{% endblock %}
+{% from "_componentes.html" import foto, estrelas, icone, selo_verificacao, estado_vazio %}
+{% block title %}{{ instrutor["nome"] }} · Instrutor · Habilita+{% endblock %}
+{% block main_class %}conteudo-largo{% endblock %}
+{% block body_class %}{{ "com-barra-acao" if pode_agendar }}{% endblock %}
 {% block content %}
 
-<header class="cabecalho-app">
-    <a class="link-voltar" href="{{ url_for('busca.buscar') }}">← Voltar</a>
-</header>
+<a class="link-voltar" href="{{ url_for('main.home') if eh_dono else url_for('busca.buscar') }}">
+    {{ icone("voltar") }}{{ "Início" if eh_dono else "Buscar" }}
+</a>
 
-{% if not instrutor["verificado"] %}
-<div class="aviso-analise">
-    <span aria-hidden="true">⏳</span>
-    <span>Este perfil ainda está em análise pela equipe do Habilita+ e não recebeu o selo de verificado.</span>
-</div>
-{% endif %}
+<div class="layout-perfil">
+    <div class="perfil-principal">
 
-<div class="card perfil-cabecalho">
-    {{ foto(instrutor, "avatar avatar-grande") }}
-    <h1>
-        {{ instrutor["nome"] }}
-        {% if instrutor["verificado"] %}
-            <span class="selo-verificado" title="Perfil verificado">✓</span>
-        {% else %}
-            <span class="selo-analise">Em análise</span>
-        {% endif %}
-    </h1>
-    <p class="texto-secundario">{{ instrutor["regiao_atuacao"] or instrutor["cidade"] }}</p>
-
-    {% if instrutor["total_avaliacoes"] %}
-        <p class="instrutor-nota perfil-nota">
-            {{ estrelas(instrutor["media_estrelas"]) }}
-            <strong>{{ "%.1f"|format(instrutor["media_estrelas"]) }}</strong>
-            <span class="texto-secundario">· {{ instrutor["total_avaliacoes"] }} avaliações</span>
-        </p>
-    {% else %}
-        <p class="texto-secundario">Sem avaliações ainda</p>
-    {% endif %}
-
-    <div class="perfil-numeros">
-        <div>
-            <strong>R$ {{ "%.2f"|format(instrutor["valor_aula"]) | replace(".", ",") }}</strong>
-            <span class="texto-secundario">por aula</span>
-        </div>
-        <div>
-            <strong>{{ instrutor["categorias_cnh"] }}</strong>
-            <span class="texto-secundario">categorias</span>
-        </div>
-        <div>
-            <strong>{{ aulas_concluidas }}</strong>
-            <span class="texto-secundario">aulas dadas</span>
-        </div>
-    </div>
-</div>
-
-<section class="secao">
-    <h2 class="titulo-secao">Acessibilidade e atendimento</h2>
-    <div class="card">
-        <ul class="lista-atributos">
-            <li class="{{ 'atributo-sim' if instrutor['atende_libras'] else 'atributo-nao' }}">
-                <span aria-hidden="true">{{ "✓" if instrutor["atende_libras"] else "—" }}</span>
-                Atendimento em Libras
-            </li>
-            <li class="{{ 'atributo-sim' if instrutor['atende_neurodivergentes'] else 'atributo-nao' }}">
-                <span aria-hidden="true">{{ "✓" if instrutor["atende_neurodivergentes"] else "—" }}</span>
-                Experiência com pessoas neurodivergentes
-            </li>
-            <li class="{{ 'atributo-sim' if instrutor['atende_pcd'] else 'atributo-nao' }}">
-                <span aria-hidden="true">{{ "✓" if instrutor["atende_pcd"] else "—" }}</span>
-                Experiência com pessoas com deficiência
-            </li>
-            <li class="{{ 'atributo-sim' if instrutor['somente_mulheres'] else 'atributo-nao' }}">
-                <span aria-hidden="true">{{ "✓" if instrutor["somente_mulheres"] else "—" }}</span>
-                Instrutora mulher
-            </li>
-        </ul>
-    </div>
-</section>
-
-{% if veiculos %}
-<section class="secao">
-    <h2 class="titulo-secao">Veículos disponíveis</h2>
-    <p class="texto-secundario ajuda-secao">
-        Escolha o veículo no agendamento. O valor da locação é somado ao preço da aula.
-    </p>
-
-    {% for veiculo in veiculos %}
-    <article class="cartao-veiculo">
-        <img class="veiculo-imagem" src="{{ url_for('static', filename=veiculo['imagem']) }}"
-             alt="{{ veiculo['marca'] }} {{ veiculo['modelo'] }}">
-        <div class="veiculo-info">
-            <h3>{{ veiculo["marca"] }} {{ veiculo["modelo"] }}</h3>
-            <div class="veiculo-etiquetas">
-                <span class="etiqueta etiqueta-categoria">CNH {{ veiculo["categoria_cnh"] }}</span>
-                <span class="etiqueta">{{ "Automático" if veiculo["transmissao"] == "automatico" else "Manual" }}</span>
-                {% if veiculo["adaptado"] %}<span class="etiqueta etiqueta-pcd">Adaptado</span>{% endif %}
+        <section class="perfil-cabecalho cartao">
+            {{ foto(instrutor["foto_url"], instrutor["nome"], "lg") }}
+            <div class="perfil-identidade">
+                <div class="perfil-nome-linha">
+                    <h1>{{ instrutor["nome"] }}</h1>
+                    {{ selo_verificacao(instrutor["verificado"]) }}
+                </div>
+                <p class="perfil-local">{{ icone("local") }}{{ instrutor["regiao_atuacao"] or instrutor["cidade"] }}</p>
+                {% if instrutor["total_avaliacoes"] %}
+                <p class="perfil-nota">
+                    {{ estrelas(instrutor["media_estrelas"]) }}
+                    <strong>{{ "%.1f"|format(instrutor["media_estrelas"]) | replace(".", ",") }}</strong>
+                    <a href="#avaliacoes">{{ instrutor["total_avaliacoes"] }} {{ "avaliação" if instrutor["total_avaliacoes"] == 1 else "avaliações" }}</a>
+                </p>
+                {% else %}
+                <p class="texto-suave">Ainda sem avaliações</p>
+                {% endif %}
             </div>
-            <p class="veiculo-preco">
-                + R$ {{ "%.2f"|format(veiculo["valor_locacao"]) | replace(".", ",") }}
-                <span class="texto-secundario">locação / aula</span>
-            </p>
-            <p class="veiculo-total texto-secundario">
-                Total da aula: <strong>R$ {{ "%.2f"|format(instrutor["valor_aula"] + veiculo["valor_locacao"]) | replace(".", ",") }}</strong>
-            </p>
+
+            <dl class="perfil-numeros">
+                <div><dt>Por aula</dt><dd>{{ instrutor["valor_aula"] | moeda }}</dd></div>
+                <div><dt>Categorias</dt><dd>{{ instrutor["categorias_cnh"] or "—" }}</dd></div>
+                <div><dt>Aulas dadas</dt><dd>{{ aulas_concluidas }}</dd></div>
+            </dl>
+
+            {% if eh_dono %}
+            <a class="botao botao-secundario botao-bloco" href="{{ url_for('instrutores.editar_perfil') }}">{{ icone("editar") }}Editar meu perfil</a>
+            {% endif %}
+        </section>
+
+        {% if not instrutor["verificado"] %}
+        <div class="aviso">
+            {{ icone("relogio") }}
+            <p>Perfil em análise: a equipe do Habilita+ ainda não verificou os documentos deste profissional.</p>
         </div>
-    </article>
-    {% endfor %}
-</section>
-{% endif %}
-
-{% if instrutor["veiculo_adaptado_disponivel"] %}
-<section class="secao">
-    <div class="card cartao-parceria">
-        <span class="etiqueta etiqueta-veiculo">Veículo adaptado</span>
-        <h3>Veículo de locação adaptado disponível</h3>
-        <p class="texto-secundario">
-            Este profissional oferece veículo adaptado para as aulas, em parceria com locadora conveniada.
-            Combine os detalhes no agendamento.
-        </p>
-    </div>
-</section>
-{% endif %}
-
-<section class="secao">
-    <h2 class="titulo-secao">Avaliações ({{ avaliacoes|length }})</h2>
-
-    {% for avaliacao in avaliacoes %}
-    <article class="card avaliacao">
-        <div class="avaliacao-topo">
-            <strong>{{ avaliacao["nome_candidato"].split()[0] }} {{ avaliacao["nome_candidato"].split()[-1][0] }}.</strong>
-            <span class="texto-secundario">{{ avaliacao["data_formatada"] }}</span>
-        </div>
-        {{ estrelas(avaliacao["nota"]) }}
-        {% if avaliacao["comentario"] %}
-            <p class="avaliacao-comentario">{{ avaliacao["comentario"] }}</p>
         {% endif %}
-    </article>
-    {% else %}
-    <div class="card">
-        <p class="texto-secundario">Este profissional ainda não recebeu avaliações.</p>
-    </div>
-    {% endfor %}
-</section>
 
-<div class="barra-acao">
-    <div>
-        <strong>R$ {{ "%.2f"|format(instrutor["valor_aula"]) | replace(".", ",") }}</strong>
-        <span class="texto-secundario">/ aula</span>
+        <section class="secao" aria-labelledby="titulo-atendimento">
+            <h2 id="titulo-atendimento" class="titulo-secao">Atendimento</h2>
+            {% set itens = [
+                ("atende_libras", "Atendimento em Libras"),
+                ("atende_neurodivergentes", "Experiência com pessoas neurodivergentes"),
+                ("atende_pcd", "Experiência com pessoas com deficiência"),
+                ("veiculo_adaptado_disponivel", "Veículo adaptado disponível"),
+                ("somente_mulheres", "Instrutora mulher"),
+            ] %}
+            <ul class="lista-atributos cartao">
+                {% for coluna, rotulo in itens %}
+                <li class="{{ 'sim' if instrutor[coluna] else 'nao' }}">
+                    <span class="atributo-marca">{{ icone("check" if instrutor[coluna] else "fechar") }}</span>
+                    <span>{{ rotulo }}<span class="oculto">: {{ "sim" if instrutor[coluna] else "não" }}</span></span>
+                </li>
+                {% endfor %}
+            </ul>
+        </section>
+
+        {% if veiculos %}
+        <section class="secao" aria-labelledby="titulo-veiculos">
+            <h2 id="titulo-veiculos" class="titulo-secao">Veículos para as aulas</h2>
+            <p class="secao-ajuda">Você escolhe o veículo ao agendar. A locação é somada ao valor da aula.</p>
+            <div class="grade-veiculos">
+                {% for veiculo in veiculos %}
+                <article class="cartao-veiculo">
+                    <img class="veiculo-imagem" src="{{ url_for('static', filename=veiculo['imagem']) }}"
+                         alt="Ilustração de {{ veiculo['marca'] }} {{ veiculo['modelo'] }}" width="112" height="72" loading="lazy" decoding="async">
+                    <div class="veiculo-info">
+                        <h3>{{ veiculo["marca"] }} {{ veiculo["modelo"] }}</h3>
+                        <div class="etiquetas">
+                            <span class="etiqueta etiqueta-neutra">CNH {{ veiculo["categoria_cnh"] }}</span>
+                            <span class="etiqueta etiqueta-neutra">{{ "Automático" if veiculo["transmissao"] == "automatico" else "Manual" }}</span>
+                            {% if veiculo["adaptado"] %}<span class="etiqueta etiqueta-destaque">Adaptado</span>{% endif %}
+                        </div>
+                        <p class="veiculo-valores">
+                            <span>+ {{ veiculo["valor_locacao"] | moeda }} de locação</span>
+                            <strong>{{ (instrutor["valor_aula"] + veiculo["valor_locacao"]) | moeda }} no total</strong>
+                        </p>
+                    </div>
+                </article>
+                {% endfor %}
+            </div>
+        </section>
+        {% endif %}
+
+        <section class="secao" id="avaliacoes" aria-labelledby="titulo-avaliacoes">
+            <h2 id="titulo-avaliacoes" class="titulo-secao">Avaliações</h2>
+
+            {% if avaliacoes %}
+            <div class="resumo-avaliacoes cartao">
+                <div class="resumo-avaliacoes-nota">
+                    <strong>{{ "%.1f"|format(instrutor["media_estrelas"]) | replace(".", ",") }}</strong>
+                    {{ estrelas(instrutor["media_estrelas"]) }}
+                    <span>{{ avaliacoes|length }} {{ "avaliação" if avaliacoes|length == 1 else "avaliações" }}</span>
+                </div>
+                <ul class="distribuicao" aria-label="Distribuição das notas">
+                    {% for nota, quantidade in distribuicao.items() %}
+                    <li>
+                        <span>{{ nota }}</span>
+                        <meter class="distribuicao-barra" min="0" max="{{ avaliacoes|length }}" value="{{ quantidade }}" aria-hidden="true"></meter>
+                        <span class="oculto">{{ nota }} estrelas:</span><span>{{ quantidade }}</span>
+                    </li>
+                    {% endfor %}
+                </ul>
+            </div>
+
+            {% for avaliacao in avaliacoes %}
+            {% set partes = avaliacao["nome_candidato"].split() %}
+            <article class="avaliacao">
+                <div class="avaliacao-topo">
+                    <strong>{{ partes[0] }}{{ " " ~ partes[-1][0] ~ "." if partes|length > 1 }}</strong>
+                    <span class="texto-suave">{{ avaliacao["data_formatada"] }}</span>
+                </div>
+                <p class="avaliacao-nota">{{ estrelas(avaliacao["nota"]) }}<span class="oculto">Nota {{ avaliacao["nota"] }} de 5</span></p>
+                {% if avaliacao["comentario"] %}<p class="avaliacao-texto">{{ avaliacao["comentario"] }}</p>{% endif %}
+            </article>
+            {% endfor %}
+            {% else %}
+                {{ estado_vazio("Ainda sem avaliações", "As avaliações aparecem aqui depois das primeiras aulas concluídas.", nome_icone="estrela") }}
+            {% endif %}
+        </section>
     </div>
-    <a class="botao botao-primario botao-acao" href="{{ url_for('agendamentos.escolher', instrutor_id=instrutor['id']) }}">Agendar aula</a>
+
+    {% if pode_agendar %}
+    <aside class="perfil-lateral" aria-label="Agendar aula">
+        <div class="cartao-agendar">
+            <p class="preco preco-lg"><strong>{{ instrutor["valor_aula"] | moeda }}</strong><span>/aula</span></p>
+            <p class="cartao-agendar-texto">Escolha dia, horário e veículo. Você vê o total antes de confirmar.</p>
+            <a class="botao botao-primario botao-bloco" href="{{ url_for('agendamentos.escolher', instrutor_id=instrutor['id']) }}">Agendar aula</a>
+        </div>
+    </aside>
+    {% endif %}
 </div>
 
 {% endblock %}

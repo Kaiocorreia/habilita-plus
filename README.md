@@ -282,7 +282,7 @@ desatualizado a cada nova avaliação; calculando na hora, é impossível ficar 
 
 | # | Tela | Rota |
 |---|---|---|
-| 1 | Splash | `/` |
+| 1 | Página de entrada (pública, indexável) | `/` |
 | 2 | Login | `/login` |
 | 3 | Cadastro (tipo de conta) | `/cadastro` |
 | 4 | Cadastro — dados pessoais | `/cadastro/dados` |
@@ -293,43 +293,59 @@ desatualizado a cada nova avaliação; calculando na hora, é impossível ficar 
 | 9 | Home do candidato (destaques e minhas aulas) | `/home` |
 | 9b | Painel do instrutor (agenda e indicadores) | `/home` |
 | 10 | Busca com filtros | `/busca` |
-| 10b | Minhas aulas (próximas, histórico, cancelamento) | `/minhas-aulas` |
+| 10b | Minhas aulas / Agenda do instrutor (próximas, histórico, cancelar, confirmar) | `/minhas-aulas` |
 | 11 | Perfil do instrutor | `/instrutor/<id>` |
+| 11b | Editar perfil profissional | `/perfil/editar` |
 | 12 | Agendamento (calendário, horário, veículo) | `/instrutor/<id>/agendar` |
 | 13 | Confirmação | `/agendamento/confirmar` |
 | 14 | Sucesso | `/agendamento/<id>/sucesso` |
 | 15 | Avaliação pós-aula | `/agendamento/<id>/avaliar` |
+| — | Páginas de erro (400, 404, 405, 500) e sem conexão | `/offline` |
 
 O cadastro é um assistente de 4 etapas para candidatos e 2 etapas para profissionais. Os
 dados ficam na sessão do Flask durante o preenchimento e só são gravados no banco na
-última etapa — assim um cadastro abandonado no meio não deixa registro incompleto.
+última etapa — assim um cadastro abandonado no meio não deixa registro incompleto. A
+senha vira hash já na primeira etapa: a sessão do Flask é um cookie *assinado*, não
+criptografado, e o texto original nunca deve passar por ele.
+
+**Ciclo de vida da aula:** `agendado` (marcada pelo candidato) → `confirmado` (o instrutor
+aceita) → `concluido` (automático, uma hora depois do início) → avaliação liberada. A
+qualquer momento antes do início, candidato ou instrutor pode passar para `cancelado`,
+o que libera o horário.
 
 ## Estrutura do projeto
 
 ```
 habilita-plus/
 ├── app/
-│   ├── __init__.py          fábrica da aplicação Flask
+│   ├── __init__.py          fábrica da aplicação Flask, filtros e páginas de erro
+│   ├── seguranca.py         token CSRF e cabeçalhos HTTP de segurança
+│   ├── sessao.py            decorador de login e controle de acesso por tipo
+│   ├── agenda.py            fuso de Brasília, regras de horário e conclusão de aulas
+│   ├── consultas.py         SQL compartilhado entre telas
+│   ├── formularios.py       validação dos formulários
 │   ├── constantes.py        cidades do ES, categorias, horários, meses
 │   ├── routes/
-│   │   ├── main.py          splash, home, service worker
+│   │   ├── main.py          entrada, home, robots.txt, sitemap.xml, service worker
 │   │   ├── auth.py          login, logout, cadastro em etapas
 │   │   ├── busca.py         busca com filtros dinâmicos
-│   │   ├── instrutores.py   perfil público do profissional
-│   │   ├── agendamentos.py  calendário, confirmação e sucesso
+│   │   ├── instrutores.py   perfil público e edição do perfil profissional
+│   │   ├── agendamentos.py  calendário, confirmação, cancelamento e agenda
 │   │   └── avaliacoes.py    avaliação pós-aula
-│   ├── templates/           HTML com Jinja2
+│   ├── templates/           HTML com Jinja2 (_componentes.html reúne as peças reutilizadas)
 │   └── static/
-│       ├── css/style.css    identidade visual completa
+│       ├── css/style.css    identidade visual completa, mobile-first
+│       ├── js/app.js        melhorias progressivas (o site funciona sem ele)
 │       ├── icons/           ícones do PWA
 │       ├── img/             fotos dos profissionais e veículos
 │       ├── manifest.json    configuração do PWA
 │       └── service-worker.js
 ├── database/
-│   ├── schema.sql           definição das 7 tabelas
+│   ├── schema.sql           definição das 10 tabelas e 7 índices
 │   ├── db.py                conexão SQLite
 │   ├── init_db.py           cria o banco
-│   └── seed.py              popula com dados de exemplo
+│   └── seed.py              popula com dados de exemplo (recusa apagar contas reais)
+├── tests/test_app.py        38 testes automatizados
 ├── instance/habilita.db     o banco (gerado, não versionado)
 ├── requirements.txt
 └── run.py
@@ -350,14 +366,34 @@ padrão, então toda conexão executa `PRAGMA foreign_keys = ON` (em `database/d
 não pode estar ocupado" são verificadas na interface, na rota e na constraint do banco.
 As duas primeiras servem para dar mensagens claras; a do banco é a que realmente garante.
 
+**Proteção contra CSRF.** Todo formulário `POST` leva um token secreto da sessão,
+conferido antes da rota rodar (`app/seguranca.py`). Sem ele, um site malicioso poderia
+criar um formulário invisível que cancela aulas de quem estiver logado. Implementado com
+a biblioteca padrão, sem dependência nova.
+
+**Cabeçalhos de segurança.** `Content-Security-Policy` só permite recursos do próprio site
+— por isso não há nenhum `<script>` nem `style=""` embutido nos templates (um teste
+automatizado garante isso). Também `X-Frame-Options`, `X-Content-Type-Options`,
+`Referrer-Policy` e, em produção, `Strict-Transport-Security`. O cookie de sessão é
+`HttpOnly`, `SameSite=Lax` e, em HTTPS, `Secure`. Páginas logadas saem com `no-store`.
+
+**Login.** A mesma mensagem e o mesmo tempo de resposta para e-mail inexistente e senha
+errada, para não revelar quem tem conta. A sessão é recriada no login (contra fixação de
+sessão), e o `?proximo=` só aceita caminhos internos (contra redirecionamento aberto).
+O logout é por `POST`.
+
+**Fuso horário fixo.** O servidor roda em UTC; às 21h em Vitória ele já estaria no dia
+seguinte. `app/agenda.py` usa o horário de Brasília para decidir o que é passado ou futuro.
+
 **Calendário sem JavaScript.** O calendário de agendamento é uma tabela HTML gerada pelo
 módulo `calendar` do Python, e cada dia é um link comum. Funciona com o botão Voltar do
 navegador e com leitores de tela — relevante num projeto cujo foco é acessibilidade.
 
 ## Acessibilidade
 
-O projeto foi auditado contra as diretrizes WCAG 2.1 nível AA. Oito telas verificadas
-(splash, login, cadastro, home, busca, perfil, agendamento e minhas aulas):
+O projeto foi auditado contra as diretrizes WCAG 2.2 nível AA, em celular (375px) e
+desktop (1366px). Telas verificadas: entrada, login, cadastro, home, busca, perfil,
+agendamento e minhas aulas, nas visões de candidato e de instrutor:
 
 | Critério | Resultado |
 |---|---|
@@ -366,6 +402,9 @@ O projeto foi auditado contra as diretrizes WCAG 2.1 nível AA. Oito telas verif
 | Campos de formulário com rótulo (1.3.1, 3.3.2) | 0 falhas |
 | Imagens com texto alternativo (1.1.1) | 0 falhas |
 | Idioma da página declarado (3.1.1) | `lang="pt-BR"` |
+| Hierarquia de títulos sem saltos (1.3.1) | 0 falhas |
+| Foco não escondido pelas barras fixas (2.4.11) | `scroll-padding` |
+| Rolagem horizontal no celular (1.4.10) | nenhuma |
 
 Correções aplicadas durante a auditoria: a cor das estrelas foi escurecida de `#F59E0B`
 para `#B45309` (o âmbar original dava apenas 2.15:1), os dias passados e horários ocupados
@@ -373,8 +412,10 @@ do calendário deixaram de usar cinza-claro ilegível, e links como *Ver todas* 
 perfil* ganharam altura mínima de 44px.
 
 A interface também declara `prefers-reduced-motion` para quem configurou o sistema
-operacional para reduzir animações, e todo elemento focável tem contorno visível para
-navegação por teclado.
+operacional para reduzir animações, todo elemento focável tem contorno visível para
+navegação por teclado, há um link "Pular para o conteúdo", grupos de opções usam
+`fieldset` + `legend`, e as mensagens de sucesso e erro são anunciadas por leitores de
+tela (`aria-live`).
 
 ## PWA
 
@@ -382,7 +423,8 @@ O aplicativo pode ser adicionado à tela inicial do celular com ícone próprio 
 tela cheia (`display: standalone`).
 
 - `static/manifest.json` — nome, ícones (192, 512 e maskable), tema azul `#2563EB`
-- `static/service-worker.js` — cache do CSS e ícones
+- `static/service-worker.js` — páginas sempre da rede (horários mudam o tempo todo); sem
+  conexão, mostra a página `/offline` em vez do erro do navegador
 - Meta tags de iOS (`apple-mobile-web-app-capable`, `apple-touch-icon`) em `base.html`
 
 O service worker é servido pela rota `/service-worker.js` (e não diretamente de
@@ -391,6 +433,19 @@ servido — da raiz, ele cobre o site inteiro.
 
 **Instalação:** no Android/Chrome, menu ⋮ → "Adicionar à tela inicial". No iPhone/Safari,
 botão Compartilhar → "Adicionar à Tela de Início".
+
+## Testes automatizados
+
+```bash
+python -m unittest discover -s tests -t . -v
+```
+
+38 testes, usando um banco temporário (nunca tocam em `instance/habilita.db`). Cobrem:
+páginas públicas e de erro, proteção CSRF, cabeçalhos de segurança, senha fora do cookie,
+entradas inválidas que antes derrubavam o servidor, fluxo completo de agendamento,
+horário duplicado (pela aplicação e pelo índice parcial do banco), cancelamento,
+confirmação pelo instrutor, ciclo de vida até a avaliação, cadastro, edição de perfil e
+busca. Usam só a biblioteca padrão (`unittest`), sem dependência nova.
 
 ## Publicação com HTTPS (PythonAnywhere)
 
@@ -498,6 +553,18 @@ Depois clique em **Reload** na aba Web.
 > versionamento de propósito — o do servidor é independente do seu, e os cadastros feitos
 > no site publicado não são apagados por um `git pull`. Só rode `init_db.py` lá de novo se
 > quiser mesmo zerar tudo (o `schema.sql` tiver mudado, por exemplo).
+>
+> O `seed.py` se recusa a rodar se encontrar contas que não são do seed, justamente para
+> não apagar cadastros reais por engano no servidor.
+
+**Cópia de segurança do banco.** O banco é um único arquivo. No console do servidor:
+
+```bash
+cp ~/habilita-plus/instance/habilita.db ~/habilita-backup-$(date +%Y%m%d).db
+```
+
+**Conta gratuita expira.** O plano gratuito desativa o site se ninguém renovar. Na aba
+**Web**, clique em *Run until 3 months from today* sempre que entrar no painel.
 
 ## Repositório
 
@@ -513,10 +580,12 @@ Pontos deixados em aberto conscientemente, por estarem fora do escopo desta fase
   seção *Publicação com HTTPS* para resolver isso.
 - **Instrutor não define disponibilidade.** Todos os profissionais oferecem a mesma grade
   fixa de horários (07:00–17:00). O passo natural seria uma tabela `disponibilidades`.
-- **Sem busca por nome.** Os filtros cobrem cidade, categoria, preço, avaliação e
-  acessibilidade, mas não há campo de texto livre.
-- **Painel do instrutor é somente leitura.** Ele vê a própria agenda, a nota e o total de
-  aulas dadas, mas ainda não edita o perfil nem define horários de disponibilidade.
+- **Instrutor não cadastra veículos.** Os veículos existem só pelo seed; a edição de
+  perfil cobre valor, região, categorias e atendimento.
+- **Sem lembretes nem recuperação de senha.** Ambos dependem de um serviço de envio de
+  e-mail ou mensagem, que exige credenciais externas.
+- **Sem limite de tentativas de login.** Exigiria guardar tentativas por IP; fica como
+  próxima melhoria de segurança.
 - **Verificação de perfil não tem fluxo de aprovação.** Perfis novos aparecem nas buscas
   marcados como *Em análise* e ordenados depois dos verificados; a promoção para
   `verificado = 1` precisa ser feita direto no banco, sem tela de administração.

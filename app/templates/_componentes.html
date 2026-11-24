@@ -1,0 +1,123 @@
+{# Componentes reutilizados entre telas. Um só lugar para cada peça visual. #}
+
+{% macro icone(nome, classe="") -%}
+<svg class="icone {{ classe }}" aria-hidden="true" focusable="false"><use href="#i-{{ nome }}"></use></svg>
+{%- endmacro %}
+
+{% macro campo_csrf() -%}
+<input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+{%- endmacro %}
+
+{% macro iniciais(nome) -%}
+    {%- set partes = (nome or "?").split() -%}
+    {{ (partes[0][0] ~ (partes[-1][0] if partes|length > 1 else "")) | upper }}
+{%- endmacro %}
+
+{# Foto da pessoa ou, sem foto, um círculo com as iniciais. A largura e altura
+   explícitas reservam o espaço antes da imagem carregar (evita saltos na tela). #}
+{% macro foto(url, nome, tamanho="md") -%}
+    {%- set px = {"sm": 40, "md": 52, "lg": 88}[tamanho] -%}
+    {%- if url -%}
+        <img class="avatar avatar-{{ tamanho }}" src="{{ url_for('static', filename=url) }}"
+             alt="" width="{{ px }}" height="{{ px }}" loading="lazy" decoding="async">
+    {%- else -%}
+        <span class="avatar avatar-{{ tamanho }} avatar-iniciais" aria-hidden="true">{{ iniciais(nome) }}</span>
+    {%- endif -%}
+{%- endmacro %}
+
+{# As estrelas são decorativas para leitores de tela: a nota em número vai em texto. #}
+{% macro estrelas(nota, classe="") -%}
+    {%- set cheias = (nota or 0) | round | int -%}
+    <span class="estrelas {{ classe }}" aria-hidden="true">
+        {%- for i in range(5) -%}
+            <svg class="estrela {{ 'estrela-cheia' if i < cheias }}"><use href="#i-estrela"></use></svg>
+        {%- endfor -%}
+    </span>
+{%- endmacro %}
+
+{% macro selo_verificacao(verificado) -%}
+    {%- if verificado -%}
+        <span class="selo selo-verificado">{{ icone("escudo") }}Verificado</span>
+    {%- else -%}
+        <span class="selo selo-analise">Em análise</span>
+    {%- endif -%}
+{%- endmacro %}
+
+{% macro status_aula(status) -%}
+    {%- set rotulos = {"agendado": "Aguardando confirmação", "confirmado": "Confirmada",
+                       "concluido": "Concluída", "cancelado": "Cancelada"} -%}
+    <span class="status status-{{ status }}">{{ rotulos.get(status, status) }}</span>
+{%- endmacro %}
+
+{% macro etiquetas_atendimento(instrutor) -%}
+    {%- if instrutor["atende_libras"] %}<span class="etiqueta etiqueta-destaque">Libras</span>{% endif -%}
+    {%- if instrutor["somente_mulheres"] %}<span class="etiqueta">Instrutora mulher</span>{% endif -%}
+    {%- if instrutor["atende_neurodivergentes"] %}<span class="etiqueta">Neurodivergência</span>{% endif -%}
+    {%- if instrutor["atende_pcd"] %}<span class="etiqueta">PcD</span>{% endif -%}
+    {%- if instrutor["veiculo_adaptado_disponivel"] %}<span class="etiqueta etiqueta-destaque">Veículo adaptado</span>{% endif -%}
+{%- endmacro %}
+
+{# O cartão inteiro é clicável pelo link do nome (o ::after do link cobre o cartão),
+   mas só existe UM link: leitores de tela não ouvem o mesmo destino duas vezes. #}
+{% macro cartao_instrutor(instrutor) %}
+<article class="cartao-instrutor">
+    <div class="cartao-instrutor-topo">
+        {{ foto(instrutor["foto_url"], instrutor["nome"]) }}
+        <div class="cartao-instrutor-identidade">
+            <h3 class="cartao-instrutor-nome">
+                <a class="link-cartao" href="{{ url_for('instrutores.perfil', instrutor_id=instrutor['id']) }}">{{ instrutor["nome"] }}</a>
+            </h3>
+            <p class="cartao-instrutor-local">{{ icone("local") }}{{ instrutor["regiao_atuacao"] or instrutor["cidade"] }}</p>
+        </div>
+        {{ selo_verificacao(instrutor["verificado"]) }}
+    </div>
+
+    <div class="cartao-instrutor-avaliacao">
+        {% if instrutor["total_avaliacoes"] %}
+            {{ estrelas(instrutor["media_estrelas"]) }}
+            <strong>{{ "%.1f"|format(instrutor["media_estrelas"]) | replace(".", ",") }}</strong>
+            <span class="texto-suave">· {{ instrutor["total_avaliacoes"] }} {{ "avaliação" if instrutor["total_avaliacoes"] == 1 else "avaliações" }}</span>
+        {% else %}
+            <span class="texto-suave">Novo na plataforma</span>
+        {% endif %}
+    </div>
+
+    <div class="etiquetas">
+        <span class="etiqueta etiqueta-neutra">CNH {{ instrutor["categorias_cnh"] or "—" }}</span>
+        {{ etiquetas_atendimento(instrutor) }}
+    </div>
+
+    <div class="cartao-instrutor-rodape">
+        <p class="preco"><strong>{{ instrutor["valor_aula"] | moeda }}</strong><span>/aula</span></p>
+        <span class="cartao-instrutor-cta" aria-hidden="true">Ver perfil{{ icone("avancar") }}</span>
+    </div>
+</article>
+{% endmacro %}
+
+{% macro progresso(etapa, total) -%}
+<div class="progresso" role="group" aria-label="Etapa {{ etapa }} de {{ total }}">
+    <p class="progresso-texto">Etapa {{ etapa }} de {{ total }}</p>
+    <div class="progresso-barra" aria-hidden="true">
+        {% for i in range(1, total + 1) %}<span class="{{ 'feita' if i <= etapa }}"></span>{% endfor %}
+    </div>
+</div>
+{%- endmacro %}
+
+{% macro cabecalho(titulo, voltar=None, voltar_rotulo="Voltar", subtitulo=None) -%}
+<header class="cabecalho-pagina">
+    {% if voltar %}
+        <a class="link-voltar" href="{{ voltar }}">{{ icone("voltar") }}{{ voltar_rotulo }}</a>
+    {% endif %}
+    <h1>{{ titulo }}</h1>
+    {% if subtitulo %}<p class="cabecalho-subtitulo">{{ subtitulo }}</p>{% endif %}
+</header>
+{%- endmacro %}
+
+{% macro estado_vazio(titulo, texto, acao_url=None, acao_rotulo=None, nome_icone="calendario") -%}
+<div class="estado-vazio">
+    <span class="estado-vazio-icone">{{ icone(nome_icone) }}</span>
+    <h3>{{ titulo }}</h3>
+    <p>{{ texto }}</p>
+    {% if acao_url %}<a class="botao botao-secundario" href="{{ acao_url }}">{{ acao_rotulo }}</a>{% endif %}
+</div>
+{%- endmacro %}

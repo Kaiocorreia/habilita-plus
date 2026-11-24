@@ -1,43 +1,50 @@
 {% extends "base.html" %}
-{% from "_cartao_instrutor.html" import foto %}
+{% from "_componentes.html" import foto, icone, campo_csrf %}
 {% block title %}Avaliar aula · Habilita+{% endblock %}
+{% block main_class %}conteudo-estreito{% endblock %}
 {% block content %}
 
-<header class="cabecalho-app">
-    <a class="link-voltar" href="{{ url_for('main.home') }}">← Voltar</a>
+<a class="link-voltar" href="{{ url_for('agendamentos.minhas_aulas') }}">{{ icone("voltar") }}Minhas aulas</a>
+
+<header class="cabecalho-pagina">
+    <h1>Como foi a aula?</h1>
+    <p class="cabecalho-subtitulo">Sua avaliação fica pública no perfil e ajuda outros candidatos a escolher.</p>
 </header>
 
-<h1 class="titulo-saudacao">Como foi a aula?</h1>
-<p class="texto-secundario ajuda-secao">Sua avaliação ajuda outros candidatos a escolher.</p>
-
-<div class="card">
-    <div class="resumo-instrutor">
-        {{ foto(aula) }}
+<div class="cartao">
+    <div class="recibo-pessoa">
+        {{ foto(aula["foto_instrutor"], aula["nome_instrutor"]) }}
         <div>
             <strong>{{ aula["nome_instrutor"] }}</strong>
-            <p class="texto-secundario">{{ aula["data_formatada"] }} às {{ aula["horario"] }}</p>
+            <span>Aula de {{ aula["data_formatada"] }} às {{ aula["horario"] }}</span>
         </div>
     </div>
 
-    <form method="POST">
-        <p class="rotulo-grupo">Sua nota</p>
-        <div class="estrelas-input">
-            {% for valor in [5, 4, 3, 2, 1] %}
-            <input type="radio" id="nota{{ valor }}" name="nota" value="{{ valor }}" required>
-            <label for="nota{{ valor }}" title="{{ valor }} de 5 estrelas">
-                <span class="oculto-visualmente">{{ valor }} estrelas</span>
-                <span aria-hidden="true">★</span>
-            </label>
-            {% endfor %}
-        </div>
+    <form method="POST" class="formulario">
+        {{ campo_csrf() }}
+        <fieldset class="grupo">
+            <legend>Sua nota</legend>
+            {# Ordem invertida no HTML + flex-direction: row-reverse no CSS: assim o
+               seletor "~" acende todas as estrelas até a escolhida, sem JavaScript. #}
+            <div class="estrelas-escolha">
+                {% for valor in [5, 4, 3, 2, 1] %}
+                <input type="radio" id="nota{{ valor }}" name="nota" value="{{ valor }}" required>
+                <label for="nota{{ valor }}">
+                    <svg class="icone" aria-hidden="true" focusable="false"><use href="#i-estrela"></use></svg>
+                    <span class="oculto">{{ valor }} {{ "estrela" if valor == 1 else "estrelas" }}</span>
+                </label>
+                {% endfor %}
+            </div>
+        </fieldset>
 
         <div class="campo">
-            <label for="comentario">Comentário (opcional)</label>
-            <textarea id="comentario" name="comentario" rows="4"
-                      placeholder="Conte como foi a aula, se o instrutor foi pontual, paciente..."></textarea>
+            <label for="comentario">Comentário <span class="opcional">(opcional)</span></label>
+            <textarea id="comentario" name="comentario" rows="4" maxlength="{{ limite }}" aria-describedby="dica-comentario"
+                      placeholder="Pontualidade, paciência, clareza nas explicações…">{{ comentario }}</textarea>
+            <p class="dica" id="dica-comentario">Até {{ limite }} caracteres. Seu nome aparece abreviado.</p>
         </div>
 
-        <button type="submit" class="botao botao-primario">Enviar avaliação</button>
+        <button type="submit" class="botao botao-primario botao-bloco" data-enviando="Publicando…">Publicar avaliação</button>
     </form>
 </div>
 

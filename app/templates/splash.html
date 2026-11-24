@@ -1,9 +1,74 @@
 {% extends "base.html" %}
-{% block title %}Habilita+{% endblock %}
+{% from "_componentes.html" import icone %}
+{% block title %}Habilita+ · Instrutores de autoescola no Espírito Santo{% endblock %}
+{% block body_class %}pagina-entrada{% endblock %}
+{% block head %}
+<script type="application/ld+json">
+{"@context": "https://schema.org", "@type": "WebSite", "name": "Habilita+",
+ "url": "{{ url_for('main.splash', _external=True) }}", "inLanguage": "pt-BR",
+ "description": "Marketplace que conecta candidatos à CNH a instrutores de autoescola no Espírito Santo."}
+</script>
+{% endblock %}
 {% block content %}
-<div class="splash">
-    <div class="splash-logo">Habilita<span class="mais">+</span></div>
-    <p class="splash-slogan">Democratizando o acesso à habilitação</p>
-    <a class="botao botao-primario" href="{{ url_for('auth.login') }}" style="width: 200px;">Continuar</a>
-</div>
+
+<section class="entrada-hero">
+    <p class="sobretitulo">Habilitação no Espírito Santo</p>
+    <h1 class="entrada-titulo">Sua CNH com o instrutor certo, <span>do jeito certo para você.</span></h1>
+    <p class="entrada-texto">
+        Compare instrutores por preço e avaliação, veja o valor total antes de marcar e agende
+        sem telefonemas. Filtre por atendimento em Libras, veículo adaptado ou instrutoras mulheres.
+    </p>
+    <div class="entrada-acoes">
+        <a class="botao botao-primario botao-lg" href="{{ url_for('auth.cadastro_tipo') }}">Criar conta grátis</a>
+        <a class="botao botao-secundario botao-lg" href="{{ url_for('auth.login') }}">Já tenho conta</a>
+    </div>
+
+    {% if numeros["instrutores"] %}
+    <dl class="entrada-numeros">
+        <div><dt>Instrutores</dt><dd>{{ numeros["instrutores"] }}</dd></div>
+        <div><dt>Atendimento inclusivo</dt><dd>{{ numeros["inclusivos"] }}</dd></div>
+        <div><dt>Avaliações de alunos</dt><dd>{{ numeros["avaliacoes"] }}</dd></div>
+    </dl>
+    {% endif %}
+</section>
+
+<section class="entrada-secao" aria-labelledby="titulo-diferenciais">
+    <h2 id="titulo-diferenciais">Feito para tirar a dúvida antes da aula</h2>
+    <div class="grade-3">
+        <article class="destaque">
+            <span class="destaque-icone">{{ icone("dinheiro") }}</span>
+            <h3>Preço claro</h3>
+            <p>O valor da aula e o da locação do carro aparecem juntos, antes de você confirmar.</p>
+        </article>
+        <article class="destaque">
+            <span class="destaque-icone">{{ icone("acessivel") }}</span>
+            <h3>Acessibilidade de verdade</h3>
+            <p>Libras, veículo adaptado e experiência com neurodivergência são filtros de busca, não promessas.</p>
+        </article>
+        <article class="destaque">
+            <span class="destaque-icone">{{ icone("estrela") }}</span>
+            <h3>Avaliações reais</h3>
+            <p>Só avalia quem fez a aula, uma vez por aula. A nota é sempre a média atual.</p>
+        </article>
+    </div>
+</section>
+
+<section class="entrada-secao" aria-labelledby="titulo-como">
+    <h2 id="titulo-como">Como funciona</h2>
+    <ol class="passos">
+        <li><strong>Busque</strong><span>por cidade, categoria, preço e necessidades de atendimento.</span></li>
+        <li><strong>Escolha o carro</strong><span>cada veículo mostra câmbio, adaptação e valor de locação.</span></li>
+        <li><strong>Agende</strong><span>no calendário, com horários livres e valor total na tela.</span></li>
+        <li><strong>Avalie</strong><span>depois da aula, e ajude o próximo candidato a escolher.</span></li>
+    </ol>
+</section>
+
+<section class="entrada-cta">
+    <div>
+        <h2>É instrutor ou autoescola?</h2>
+        <p>Cadastre seu perfil, defina seu valor e receba agendamentos de candidatos da sua região.</p>
+    </div>
+    <a class="botao botao-claro" href="{{ url_for('auth.cadastro_tipo') }}">Oferecer aulas</a>
+</section>
+
 {% endblock %}

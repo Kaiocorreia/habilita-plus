@@ -1,8 +1,12 @@
+import os
 import sqlite3
 from pathlib import Path
 
 BASE_DIR = Path(__file__).resolve().parent.parent
-DB_PATH = BASE_DIR / "instance" / "habilita.db"
+
+# HABILITA_DB_PATH permite apontar para outro arquivo (os testes usam um banco
+# temporário, assim nunca tocam no banco real).
+DB_PATH = Path(os.environ.get("HABILITA_DB_PATH") or BASE_DIR / "instance" / "habilita.db")
 
 
 def get_connection():

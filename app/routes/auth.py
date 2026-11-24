@@ -1,55 +1,72 @@
-import re
 import sqlite3
 
 from flask import Blueprint, flash, redirect, render_template, request, session, url_for
 from werkzeug.security import check_password_hash, generate_password_hash
 
-from app.constantes import CATEGORIAS_CNH, CIDADES_ES, DDD_PADRAO
+from app.constantes import (ATENDIMENTOS_INSTRUTOR, CANAIS_COMUNICACAO, CATEGORIAS_CNH,
+                            CIDADES_ES, DDD_PADRAO, TIPOS_DEFICIENCIA)
+from app.formularios import categorias_marcadas, validar_dados_pessoais, validar_perfil_profissional
+from app.sessao import destino_seguro, iniciar_sessao
 from database.db import get_connection
 
 auth_bp = Blueprint("auth", __name__)
 
-
-def normalizar_telefone(numero_digitado):
-    digitos = re.sub(r"\D", "", numero_digitado)
-    if not digitos:
-        return ""
-    return DDD_PADRAO + digitos
+# Comparado quando o e-mail não existe, para o login demorar o mesmo tempo nos dois
+# casos. Sem isso, medir o tempo de resposta revelaria quais e-mails têm conta.
+HASH_DE_COMPARACAO = generate_password_hash("habilita-plus-sem-conta")
 
 
-def categorias_selecionadas(campo):
-    return [c for c in CATEGORIAS_CNH if c in request.form.getlist(campo)]
+def _etapas(tipo):
+    return 4 if tipo == "candidato" else 2
+
+
+def _cadastro_em_andamento(*chaves_exigidas):
+    """O cadastro em etapas, se o usuário chegou até aqui na ordem certa."""
+    cadastro = session.get("cadastro")
+    if not cadastro or any(chave not in cadastro for chave in chaves_exigidas):
+        return None
+    return cadastro
 
 
 @auth_bp.route("/login", methods=["GET", "POST"])
 def login():
+    proximo = request.values.get("proximo", "")
+
     if request.method == "POST":
         email = request.form.get("email", "").strip().lower()
         senha = request.form.get("senha", "")
 
         conexao = get_connection()
         usuario = conexao.execute(
-            "SELECT id, nome, senha_hash, tipo FROM usuarios WHERE email = ?",
-            (email,),
+            "SELECT id, nome, senha_hash, tipo FROM usuarios WHERE email = ?", (email,)
         ).fetchone()
         conexao.close()
 
-        if usuario is None or not check_password_hash(usuario["senha_hash"], senha):
+        hash_salvo = usuario["senha_hash"] if usuario else HASH_DE_COMPARACAO
+        senha_confere = check_password_hash(hash_salvo, senha)
+
+        if usuario is None or not senha_confere:
+            # A mesma mensagem nos dois casos, pelo mesmo motivo do hash acima.
             flash("E-mail ou senha incorretos.", "erro")
-            return render_template("login.html", email=email)
+            return render_template("login.html", email=email, proximo=proximo), 401
 
-        session["usuario_id"] = usuario["id"]
-        session["usuario_nome"] = usuario["nome"]
-        session["usuario_tipo"] = usuario["tipo"]
+        iniciar_sessao(usuario)
+        return redirect(destino_seguro(proximo))
+
+    if session.get("usuario_id"):
         return redirect(url_for("main.home"))
+    return render_template("login.html", email="", proximo=proximo)
 
-    return render_template("login.html", email="")
 
-
-@auth_bp.route("/logout")
+@auth_bp.route("/logout", methods=["GET", "POST"])
 def logout():
-    session.clear()
-    return redirect(url_for("auth.login"))
+    # Sair só por POST (com token CSRF): um link ou imagem em outro site não
+    # consegue derrubar a sessão de ninguém. Um GET antigo apenas volta ao início.
+    if request.method == "POST":
+        session.clear()
+        flash("Você saiu da sua conta.", "sucesso")
+        return redirect(url_for("auth.login"))
+    return redirect(url_for("main.home"))
 
 
 @auth_bp.route("/cadastro", methods=["GET", "POST"])
@@ -58,239 +75,222 @@ def cadastro_tipo():
         tipo = request.form.get("tipo")
         if tipo not in ("candidato", "instrutor"):
             flash("Escolha uma das opções para continuar.", "erro")
-            return render_template("cadastro_tipo.html")
+            return render_template("cadastro_tipo.html"), 400
 
         session["cadastro"] = {"tipo": tipo}
         return redirect(url_for("auth.cadastro_dados"))
 
+    if session.get("usuario_id"):
+        return redirect(url_for("main.home"))
     session.pop("cadastro", None)
     return render_template("cadastro_tipo.html")
 
 
 @auth_bp.route("/cadastro/dados", methods=["GET", "POST"])
 def cadastro_dados():
-    cadastro = session.get("cadastro")
-    if not cadastro:
+    cadastro = _cadastro_em_andamento("tipo")
+    if cadastro is None:
         return redirect(url_for("auth.cadastro_tipo"))
 
-    if request.method == "POST":
-        nome = request.form.get("nome", "").strip()
-        email = request.form.get("email", "").strip().lower()
-        senha = request.form.get("senha", "")
-        cidade = request.form.get("cidade", "")
-        telefone = normalizar_telefone(request.form.get("telefone", ""))
+    contexto = {
+        "cidades": CIDADES_ES, "ddd": DDD_PADRAO,
+        "etapa": 1, "total_etapas": _etapas(cadastro["tipo"]),
+    }
 
-        erro = None
-        if not nome or not email or not senha:
-            erro = "Nome, e-mail e senha são obrigatórios."
-        elif len(senha) < 6:
-            erro = "A senha precisa ter pelo menos 6 caracteres."
-        elif cidade not in CIDADES_ES:
+    if request.method == "POST":
+        dados, erro = validar_dados_pessoais(request.form)
+
+        if erro is None and dados["cidade"] not in CIDADES_ES:
             erro = "Escolha uma cidade do Espírito Santo."
-        else:
+        if erro is None:
             conexao = get_connection()
-            email_em_uso = conexao.execute(
-                "SELECT id FROM usuarios WHERE email = ?", (email,)
-            ).fetchone()
+            em_uso = conexao.execute("SELECT 1 FROM usuarios WHERE email = ?", (dados["email"],)).fetchone()
             conexao.close()
-            if email_em_uso:
-                erro = "Já existe uma conta cadastrada com esse e-mail."
+            if em_uso:
+                erro = "Já existe uma conta com esse e-mail. Que tal entrar?"
 
         if erro:
             flash(erro, "erro")
-            return render_template("cadastro_dados.html", dados=request.form, cidades=CIDADES_ES, ddd=DDD_PADRAO)
+            return render_template("cadastro_dados.html", dados=request.form, **contexto), 400
 
-        cadastro.update(nome=nome, email=email, senha=senha, cidade=cidade, telefone=telefone)
+        # A sessão do Flask é um cookie ASSINADO, não criptografado: qualquer um com
+        # acesso ao navegador consegue lê-lo. Por isso a senha vira hash aqui, na
+        # primeira etapa, e o texto original nunca é gravado no cookie.
+        cadastro.update(
+            nome=dados["nome"], email=dados["email"], cidade=dados["cidade"],
+            telefone=dados["telefone"], senha_hash=generate_password_hash(dados["senha"]),
+        )
         session["cadastro"] = cadastro
 
         if cadastro["tipo"] == "candidato":
             return redirect(url_for("auth.cadastro_categoria"))
         return redirect(url_for("auth.cadastro_instrutor"))
 
-    return render_template("cadastro_dados.html", dados={}, cidades=CIDADES_ES, ddd=DDD_PADRAO)
+    return render_template("cadastro_dados.html", dados=cadastro, **contexto)
 
 
 @auth_bp.route("/cadastro/categoria", methods=["GET", "POST"])
 def cadastro_categoria():
-    cadastro = session.get("cadastro")
-    if not cadastro or "email" not in cadastro:
+    cadastro = _cadastro_em_andamento("senha_hash")
+    if cadastro is None or cadastro["tipo"] != "candidato":
         return redirect(url_for("auth.cadastro_tipo"))
 
-    if request.method == "POST":
-        categorias = categorias_selecionadas("categorias")
-        if not categorias:
-            flash("Escolha pelo menos uma categoria de CNH.", "erro")
-            return render_template("cadastro_categoria.html", categorias=CATEGORIAS_CNH)
+    selecionadas = cadastro.get("categorias", [])
 
-        cadastro["categorias_cnh_pretendidas"] = ",".join(categorias)
+    if request.method == "POST":
+        selecionadas = categorias_marcadas(request.form, "categorias")
+        if not selecionadas:
+            flash("Escolha pelo menos uma categoria de CNH.", "erro")
+            return render_template("cadastro_categoria.html", categorias=CATEGORIAS_CNH,
+                                   selecionadas=[], etapa=2, total_etapas=4), 400
+
+        cadastro["categorias"] = selecionadas
         session["cadastro"] = cadastro
         return redirect(url_for("auth.cadastro_preferencias"))
 
-    return render_template("cadastro_categoria.html", categorias=CATEGORIAS_CNH)
+    return render_template("cadastro_categoria.html", categorias=CATEGORIAS_CNH,
+                           selecionadas=selecionadas, etapa=2, total_etapas=4)
 
 
 @auth_bp.route("/cadastro/preferencias", methods=["GET", "POST"])
 def cadastro_preferencias():
-    cadastro = session.get("cadastro")
-    if not cadastro or "categorias_cnh_pretendidas" not in cadastro:
+    cadastro = _cadastro_em_andamento("categorias")
+    if cadastro is None:
         return redirect(url_for("auth.cadastro_tipo"))
 
     if request.method == "POST":
-        cadastro["prefere_instrutoras_mulheres"] = "prefere_instrutoras_mulheres" in request.form
-        cadastro["prefere_experiencia_neurodivergencia"] = "prefere_experiencia_neurodivergencia" in request.form
-        cadastro["prefere_experiencia_pcd"] = "prefere_experiencia_pcd" in request.form
+        for campo in ("prefere_instrutoras_mulheres", "prefere_experiencia_neurodivergencia",
+                      "prefere_experiencia_pcd"):
+            cadastro[campo] = campo in request.form
         session["cadastro"] = cadastro
         return redirect(url_for("auth.cadastro_acessibilidade"))
 
-    return render_template("cadastro_preferencias.html")
+    return render_template("cadastro_preferencias.html", cadastro=cadastro, etapa=3, total_etapas=4)
 
 
 @auth_bp.route("/cadastro/acessibilidade", methods=["GET", "POST"])
 def cadastro_acessibilidade():
-    cadastro = session.get("cadastro")
-    if not cadastro or "prefere_instrutoras_mulheres" not in cadastro:
+    cadastro = _cadastro_em_andamento("categorias", "prefere_instrutoras_mulheres")
+    if cadastro is None:
         return redirect(url_for("auth.cadastro_tipo"))
 
-    if request.method == "POST":
-        tipo_deficiencia = request.form.get("tipo_deficiencia", "nenhuma")
-        canal_comunicacao = request.form.get("canal_comunicacao") or None
-        precisa_veiculo_adaptado = "precisa_veiculo_adaptado" in request.form
+    contexto = {"tipos_deficiencia": TIPOS_DEFICIENCIA, "canais": CANAIS_COMUNICACAO,
+                "etapa": 4, "total_etapas": 4}
 
-        conexao = get_connection()
-        try:
-            cursor = conexao.execute(
-                """
-                INSERT INTO usuarios (nome, email, senha_hash, tipo, cidade, telefone)
-                VALUES (?, ?, ?, ?, ?, ?)
-                """,
-                (
-                    cadastro["nome"], cadastro["email"],
-                    generate_password_hash(cadastro["senha"]),
-                    "candidato", cadastro["cidade"], cadastro["telefone"],
-                ),
-            )
-            usuario_id = cursor.lastrowid
+    if request.method != "POST":
+        return render_template("cadastro_acessibilidade.html", **contexto)
 
+    tipo_deficiencia = request.form.get("tipo_deficiencia", "")
+    tipo_deficiencia = tipo_deficiencia if tipo_deficiencia in TIPOS_DEFICIENCIA else None
+    canal = request.form.get("canal_comunicacao", "texto")
+    canal = canal if canal in CANAIS_COMUNICACAO else "texto"
+    precisa_veiculo_adaptado = "precisa_veiculo_adaptado" in request.form
+
+    conexao = get_connection()
+    try:
+        cursor = conexao.execute(
+            """
+            INSERT INTO usuarios (nome, email, senha_hash, tipo, cidade, telefone)
+            VALUES (?, ?, ?, 'candidato', ?, ?)
+            """,
+            (cadastro["nome"], cadastro["email"], cadastro["senha_hash"],
+             cadastro["cidade"], cadastro["telefone"]),
+        )
+        usuario_id = cursor.lastrowid
+
+        conexao.execute(
+            """
+            INSERT INTO preferencias_candidato
+                (usuario_id, prefere_instrutoras_mulheres,
+                 prefere_experiencia_neurodivergencia, prefere_experiencia_pcd)
+            VALUES (?, ?, ?, ?)
+            """,
+            (usuario_id, int(cadastro["prefere_instrutoras_mulheres"]),
+             int(cadastro["prefere_experiencia_neurodivergencia"]),
+             int(cadastro["prefere_experiencia_pcd"])),
+        )
+        conexao.executemany(
+            "INSERT INTO candidato_categorias (usuario_id, categoria) VALUES (?, ?)",
+            [(usuario_id, categoria) for categoria in cadastro["categorias"]],
+        )
+
+        # Grava o perfil sempre que a pessoa informou algo. Antes, quem escolhia
+        # "Libras" sem marcar um tipo de deficiência perdia essa preferência.
+        if tipo_deficiencia or canal != "texto" or precisa_veiculo_adaptado:
             conexao.execute(
                 """
-                INSERT INTO preferencias_candidato
-                    (usuario_id, prefere_instrutoras_mulheres,
-                     prefere_experiencia_neurodivergencia, prefere_experiencia_pcd)
+                INSERT INTO perfis_acessibilidade
+                    (usuario_id, tipo_deficiencia, canal_comunicacao, precisa_veiculo_adaptado)
                 VALUES (?, ?, ?, ?)
                 """,
-                (
-                    usuario_id,
-                    int(cadastro["prefere_instrutoras_mulheres"]),
-                    int(cadastro["prefere_experiencia_neurodivergencia"]),
-                    int(cadastro["prefere_experiencia_pcd"]),
-                ),
+                (usuario_id, tipo_deficiencia, canal, int(precisa_veiculo_adaptado)),
             )
-            conexao.executemany(
-                "INSERT INTO candidato_categorias (usuario_id, categoria) VALUES (?, ?)",
-                [(usuario_id, c) for c in cadastro["categorias_cnh_pretendidas"].split(",")],
-            )
+        conexao.commit()
+    except sqlite3.IntegrityError:
+        conexao.rollback()
+        flash("Já existe uma conta com esse e-mail.", "erro")
+        return redirect(url_for("auth.cadastro_dados"))
+    finally:
+        conexao.close()
 
-            if tipo_deficiencia != "nenhuma":
-                conexao.execute(
-                    """
-                    INSERT INTO perfis_acessibilidade
-                        (usuario_id, tipo_deficiencia, canal_comunicacao, precisa_veiculo_adaptado)
-                    VALUES (?, ?, ?, ?)
-                    """,
-                    (usuario_id, tipo_deficiencia, canal_comunicacao, int(precisa_veiculo_adaptado)),
-                )
-
-            conexao.commit()
-        except sqlite3.IntegrityError:
-            conexao.rollback()
-            flash("Já existe uma conta cadastrada com esse e-mail.", "erro")
-            return redirect(url_for("auth.cadastro_dados"))
-        finally:
-            conexao.close()
-
-        session.pop("cadastro", None)
-        flash("Cadastro concluído! Faça login para continuar.", "sucesso")
-        return redirect(url_for("auth.login"))
-
-    return render_template("cadastro_acessibilidade.html")
+    iniciar_sessao({"id": usuario_id, "nome": cadastro["nome"], "tipo": "candidato"})
+    flash("Conta criada. Bem-vindo(a) ao Habilita+!", "sucesso")
+    return redirect(url_for("main.home"))
 
 
 @auth_bp.route("/cadastro/instrutor", methods=["GET", "POST"])
 def cadastro_instrutor():
-    cadastro = session.get("cadastro")
-    if not cadastro or "email" not in cadastro:
+    cadastro = _cadastro_em_andamento("senha_hash")
+    if cadastro is None or cadastro["tipo"] != "instrutor":
         return redirect(url_for("auth.cadastro_tipo"))
 
-    if request.method == "POST":
-        categorias = categorias_selecionadas("categorias_cnh")
-        valor_aula = request.form.get("valor_aula", "")
-        regiao_atuacao = request.form.get("regiao_atuacao", "").strip()
-        atende_libras = "atende_libras" in request.form
-        somente_mulheres = "somente_mulheres" in request.form
-        atende_neurodivergentes = "atende_neurodivergentes" in request.form
-        atende_pcd = "atende_pcd" in request.form
-        veiculo_adaptado_disponivel = "veiculo_adaptado_disponivel" in request.form
+    contexto = {"categorias": CATEGORIAS_CNH, "atendimentos": ATENDIMENTOS_INSTRUTOR,
+                "etapa": 2, "total_etapas": 2}
 
-        erro = None
-        if not categorias:
-            erro = "Escolha pelo menos uma categoria de CNH que você ensina."
-        elif not valor_aula:
-            erro = "Informe o valor da sua aula."
-        else:
-            try:
-                valor_aula = float(valor_aula.replace(",", "."))
-                if valor_aula <= 0:
-                    erro = "O valor da aula precisa ser maior que zero."
-            except ValueError:
-                erro = "Informe um valor de aula válido, por exemplo 90.00."
+    if request.method != "POST":
+        return render_template("cadastro_instrutor.html", dados={}, **contexto)
 
-        if erro:
-            flash(erro, "erro")
-            return render_template("cadastro_instrutor.html", categorias=CATEGORIAS_CNH)
+    dados, erro = validar_perfil_profissional(request.form)
+    if erro:
+        flash(erro, "erro")
+        return render_template("cadastro_instrutor.html", dados=dados, **contexto), 400
 
-        conexao = get_connection()
-        try:
-            cursor = conexao.execute(
-                """
-                INSERT INTO usuarios (nome, email, senha_hash, tipo, cidade, telefone)
-                VALUES (?, ?, ?, ?, ?, ?)
-                """,
-                (
-                    cadastro["nome"], cadastro["email"],
-                    generate_password_hash(cadastro["senha"]),
-                    "instrutor", cadastro["cidade"], cadastro["telefone"],
-                ),
-            )
-            usuario_id = cursor.lastrowid
+    conexao = get_connection()
+    try:
+        cursor = conexao.execute(
+            """
+            INSERT INTO usuarios (nome, email, senha_hash, tipo, cidade, telefone)
+            VALUES (?, ?, ?, 'instrutor', ?, ?)
+            """,
+            (cadastro["nome"], cadastro["email"], cadastro["senha_hash"],
+             cadastro["cidade"], cadastro["telefone"]),
+        )
+        usuario_id = cursor.lastrowid
 
-            cursor = conexao.execute(
-                """
-                INSERT INTO instrutores
-                    (usuario_id, valor_aula, regiao_atuacao,
-                     verificado, atende_libras, somente_mulheres,
-                     atende_neurodivergentes, atende_pcd, veiculo_adaptado_disponivel)
-                VALUES (?, ?, ?, 0, ?, ?, ?, ?, ?)
-                """,
-                (
-                    usuario_id, valor_aula, regiao_atuacao,
-                    int(atende_libras), int(somente_mulheres),
-                    int(atende_neurodivergentes), int(atende_pcd), int(veiculo_adaptado_disponivel),
-                ),
-            )
-            conexao.executemany(
-                "INSERT INTO instrutor_categorias (instrutor_id, categoria) VALUES (?, ?)",
-                [(cursor.lastrowid, c) for c in categorias],
-            )
-            conexao.commit()
-        except sqlite3.IntegrityError:
-            conexao.rollback()
-            flash("Já existe uma conta cadastrada com esse e-mail.", "erro")
-            return redirect(url_for("auth.cadastro_dados"))
-        finally:
-            conexao.close()
+        cursor = conexao.execute(
+            """
+            INSERT INTO instrutores
+                (usuario_id, valor_aula, regiao_atuacao, verificado, atende_libras,
+                 somente_mulheres, atende_neurodivergentes, atende_pcd, veiculo_adaptado_disponivel)
+            VALUES (?, ?, ?, 0, ?, ?, ?, ?, ?)
+            """,
+            (usuario_id, dados["valor_aula"], dados["regiao_atuacao"] or None,
+             int(dados["atende_libras"]), int(dados["somente_mulheres"]),
+             int(dados["atende_neurodivergentes"]), int(dados["atende_pcd"]),
+             int(dados["veiculo_adaptado_disponivel"])),
+        )
+        conexao.executemany(
+            "INSERT INTO instrutor_categorias (instrutor_id, categoria) VALUES (?, ?)",
+            [(cursor.lastrowid, categoria) for categoria in dados["categorias"]],
+        )
+        conexao.commit()
+    except sqlite3.IntegrityError:
+        conexao.rollback()
+        flash("Já existe uma conta com esse e-mail.", "erro")
+        return redirect(url_for("auth.cadastro_dados"))
+    finally:
+        conexao.close()
 
-        session.pop("cadastro", None)
-        flash("Cadastro concluído! Sua conta passará por verificação antes de aparecer nas buscas.", "sucesso")
-        return redirect(url_for("auth.login"))
-
-    return render_template("cadastro_instrutor.html", categorias=CATEGORIAS_CNH)
+    iniciar_sessao({"id": usuario_id, "nome": cadastro["nome"], "tipo": "instrutor"})
+    flash("Perfil criado. Ele já aparece nas buscas, marcado como “Em análise” até a verificação.", "sucesso")
+    return redirect(url_for("main.home"))

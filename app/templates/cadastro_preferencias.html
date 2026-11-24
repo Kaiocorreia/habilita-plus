@@ -1,38 +1,37 @@
 {% extends "base.html" %}
-{% block title %}Preferências · Habilita+{% endblock %}
+{% from "_componentes.html" import campo_csrf, progresso %}
+{% block title %}Preferências · Criar conta · Habilita+{% endblock %}
+{% block main_class %}conteudo-estreito{% endblock %}
 {% block content %}
-<div class="card">
-    <div class="cabecalho-tela">
-        <p class="progresso-etapas">Etapa 3 de 4</p>
-        <h1>Preferências</h1>
-        <p class="texto-secundario">Marque o que for importante para você. Dá para ajustar depois na busca.</p>
-    </div>
 
-    <form method="POST">
-        <div class="opcoes-lista">
-            <label class="opcao-cartao">
-                <input type="checkbox" name="prefere_instrutoras_mulheres">
-                <span class="opcao-texto">
-                    <strong>Somente instrutoras mulheres</strong>
-                    <span>A busca vai priorizar profissionais mulheres para você.</span>
-                </span>
-            </label>
-            <label class="opcao-cartao">
-                <input type="checkbox" name="prefere_experiencia_neurodivergencia">
-                <span class="opcao-texto">
-                    <strong>Experiência com pessoas neurodivergentes</strong>
-                    <span>Profissionais preparados para TDAH, autismo, dislexia e outros.</span>
-                </span>
-            </label>
-            <label class="opcao-cartao">
-                <input type="checkbox" name="prefere_experiencia_pcd">
-                <span class="opcao-texto">
-                    <strong>Experiência com pessoas com deficiência</strong>
-                    <span>Profissionais preparados para surdez, baixa visão, mobilidade reduzida e outros.</span>
-                </span>
-            </label>
-        </div>
-        <button type="submit" class="botao botao-primario">Continuar</button>
+{% set opcoes = [
+    ("prefere_instrutoras_mulheres", "Prefiro instrutoras mulheres", "Sua busca já começa filtrada por instrutoras."),
+    ("prefere_experiencia_neurodivergencia", "Experiência com neurodivergência", "Profissionais preparados para TDAH, autismo, dislexia e outros."),
+    ("prefere_experiencia_pcd", "Experiência com pessoas com deficiência", "Surdez, baixa visão, mobilidade reduzida e outros."),
+] %}
+
+<div class="painel-auth">
+    {{ progresso(etapa, total_etapas) }}
+    <header class="cabecalho-auth">
+        <h1>O que é importante para você?</h1>
+        <p>Marque o que fizer sentido. Isso já vem aplicado na sua primeira busca, e dá para mudar depois.</p>
+    </header>
+
+    <form method="POST" class="formulario">
+        {{ campo_csrf() }}
+        <fieldset class="grupo">
+            <legend class="oculto">Preferências de atendimento</legend>
+            <div class="opcoes">
+                {% for campo, titulo, texto in opcoes %}
+                <label class="opcao opcao-check">
+                    <input type="checkbox" name="{{ campo }}" {{ "checked" if cadastro.get(campo) }}>
+                    <span class="opcao-texto"><strong>{{ titulo }}</strong><span>{{ texto }}</span></span>
+                </label>
+                {% endfor %}
+            </div>
+        </fieldset>
+        <button type="submit" class="botao botao-primario botao-bloco">Continuar</button>
     </form>
 </div>
+
 {% endblock %}

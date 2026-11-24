@@ -1,51 +1,45 @@
 {% extends "base.html" %}
-{% block title %}Acessibilidade · Habilita+{% endblock %}
+{% from "_componentes.html" import campo_csrf, progresso %}
+{% block title %}Acessibilidade · Criar conta · Habilita+{% endblock %}
+{% block main_class %}conteudo-estreito{% endblock %}
 {% block content %}
-<div class="card">
-    <div class="cabecalho-tela">
-        <p class="progresso-etapas">Etapa 4 de 4</p>
-        <h1>Acessibilidade</h1>
-        <p class="texto-secundario">Isso nos ajuda a indicar os instrutores certos para você. Se não se aplica, pode pular.</p>
-    </div>
 
-    <form method="POST">
+<div class="painel-auth">
+    {{ progresso(etapa, total_etapas) }}
+    <header class="cabecalho-auth">
+        <h1>Acessibilidade</h1>
+        <p>Opcional. Ajuda a indicar instrutores preparados para você. Se não se aplica, é só concluir.</p>
+    </header>
+
+    <form method="POST" class="formulario">
+        {{ campo_csrf() }}
         <div class="campo">
-            <label for="tipo_deficiencia">Tipo de deficiência</label>
+            <label for="tipo_deficiencia">Deficiência</label>
             <select id="tipo_deficiencia" name="tipo_deficiencia">
-                <option value="nenhuma">Não tenho / prefiro não informar</option>
-                <option value="Surdez ou deficiência auditiva">Surdez ou deficiência auditiva</option>
-                <option value="Deficiência visual">Deficiência visual</option>
-                <option value="Deficiência física">Deficiência física</option>
-                <option value="Outra">Outra</option>
+                <option value="">Não tenho ou prefiro não informar</option>
+                {% for tipo in tipos_deficiencia %}<option value="{{ tipo }}">{{ tipo }}</option>{% endfor %}
             </select>
         </div>
 
-        <div class="campo">
-            <label>Canal de comunicação preferido</label>
-            <div class="opcoes-lista">
-                <label class="opcao-cartao">
-                    <input type="radio" name="canal_comunicacao" value="texto" checked>
-                    <span class="opcao-texto"><strong>Texto</strong></span>
+        <fieldset class="grupo">
+            <legend>Como prefere se comunicar com o instrutor?</legend>
+            <div class="segmentado">
+                {% for valor, rotulo in canais.items() %}
+                <label>
+                    <input type="radio" name="canal_comunicacao" value="{{ valor }}" {{ "checked" if loop.first }}>
+                    <span>{{ rotulo }}</span>
                 </label>
-                <label class="opcao-cartao">
-                    <input type="radio" name="canal_comunicacao" value="libras">
-                    <span class="opcao-texto"><strong>Libras</strong></span>
-                </label>
-                <label class="opcao-cartao">
-                    <input type="radio" name="canal_comunicacao" value="audio">
-                    <span class="opcao-texto"><strong>Áudio</strong></span>
-                </label>
+                {% endfor %}
             </div>
-        </div>
+        </fieldset>
 
-        <label class="opcao-cartao" style="margin-bottom: 20px;">
+        <label class="opcao opcao-check">
             <input type="checkbox" name="precisa_veiculo_adaptado">
-            <span class="opcao-texto">
-                <strong>Preciso de veículo adaptado para as aulas</strong>
-            </span>
+            <span class="opcao-texto"><strong>Preciso de veículo adaptado</strong><span>Sua busca já começa filtrada por quem oferece um.</span></span>
         </label>
 
-        <button type="submit" class="botao botao-primario">Concluir cadastro</button>
+        <button type="submit" class="botao botao-primario botao-bloco" data-enviando="Criando sua conta…">Concluir cadastro</button>
     </form>
 </div>
+
 {% endblock %}

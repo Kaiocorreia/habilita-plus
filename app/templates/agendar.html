@@ -1,32 +1,47 @@
 {% extends "base.html" %}
-{% block title %}Agendar aula · Habilita+{% endblock %}
+{% from "_componentes.html" import foto, icone, campo_csrf, estado_vazio %}
+{% block title %}Agendar com {{ instrutor["nome"] }} · Habilita+{% endblock %}
+{% block main_class %}conteudo-largo{% endblock %}
 {% block content %}
 
-<header class="cabecalho-app">
-    <a class="link-voltar" href="{{ url_for('instrutores.perfil', instrutor_id=instrutor['id']) }}">← Voltar</a>
+<a class="link-voltar" href="{{ url_for('instrutores.perfil', instrutor_id=instrutor['id']) }}">{{ icone("voltar") }}Perfil</a>
+
+<header class="cabecalho-pagina cabecalho-com-pessoa">
+    {{ foto(instrutor["foto_url"], instrutor["nome"], "sm") }}
+    <div>
+        <h1>Agendar aula</h1>
+        <p class="cabecalho-subtitulo">com {{ instrutor["nome"] }} · {{ instrutor["valor_aula"] | moeda }} por aula</p>
+    </div>
 </header>
 
-<h1 class="titulo-saudacao">Agendar aula</h1>
-<p class="texto-secundario ajuda-secao">com {{ instrutor["nome"] }}</p>
+<ol class="trilha" aria-label="Etapas do agendamento">
+    <li class="{{ 'atual' if not data_escolhida else 'feita' }}">Dia</li>
+    <li class="{{ 'atual' if data_escolhida }}">Horário e veículo</li>
+    <li>Confirmar</li>
+</ol>
 
-<form method="POST" action="{{ url_for('agendamentos.revisar', instrutor_id=instrutor['id']) }}">
-    <input type="hidden" name="data" value="{{ data_escolhida }}">
-
-    <div class="card calendario">
+<div class="layout-agendar">
+    <section class="cartao calendario" aria-labelledby="titulo-mes">
         <div class="calendario-topo">
-            {% if pode_voltar %}
-                <a class="calendario-seta" href="{{ url_for('agendamentos.escolher', instrutor_id=instrutor['id'], mes=mes_anterior) }}" aria-label="Mês anterior">‹</a>
+            {% if mes_anterior %}
+            <a class="botao-icone" href="{{ url_for('agendamentos.escolher', instrutor_id=instrutor['id'], mes=mes_anterior) }}" aria-label="Mês anterior">{{ icone("voltar") }}</a>
             {% else %}
-                <span class="calendario-seta calendario-seta-inativa" aria-hidden="true">‹</span>
+            <span class="botao-icone desativado" aria-hidden="true">{{ icone("voltar") }}</span>
             {% endif %}
-            <strong>{{ nome_mes|capitalize }} {{ ano }}</strong>
-            <a class="calendario-seta" href="{{ url_for('agendamentos.escolher', instrutor_id=instrutor['id'], mes=mes_seguinte) }}" aria-label="Próximo mês">›</a>
+            <h2 id="titulo-mes">{{ nome_mes | capitalize }} {{ ano }}</h2>
+            {% if mes_seguinte %}
+            <a class="botao-icone" href="{{ url_for('agendamentos.escolher', instrutor_id=instrutor['id'], mes=mes_seguinte) }}" aria-label="Próximo mês">{{ icone("avancar") }}</a>
+            {% else %}
+            <span class="botao-icone desativado" aria-hidden="true">{{ icone("avancar") }}</span>
+            {% endif %}
         </div>
 
         <table class="calendario-grade">
             <thead>
                 <tr>
-                    {% for dia_semana in dias_semana %}<th scope="col">{{ dia_semana }}</th>{% endfor %}
+                    {% for abreviacao, nome in [("D","domingo"),("S","segunda"),("T","terça"),("Q","quarta"),("Q","quinta"),("S","sexta"),("S","sábado")] %}
+                    <th scope="col"><abbr title="{{ nome }}">{{ abreviacao }}</abbr></th>
+                    {% endfor %}
                 </tr>
             </thead>
             <tbody>
@@ -35,12 +50,14 @@
                     {% for dia in semana %}
                     <td>
                         {% if dia is none %}
-                            <span class="dia-vazio"></span>
-                        {% elif dia < hoje %}
-                            <span class="dia dia-passado">{{ dia.day }}</span>
+                        {% elif dia < hoje or dia > limite %}
+                            <span class="dia indisponivel">{{ dia.day }}</span>
                         {% else %}
-                            <a class="dia {{ 'dia-escolhido' if data_escolhida == dia.isoformat() }}"
-                               href="{{ url_for('agendamentos.escolher', instrutor_id=instrutor['id'], mes=mes, data=dia.isoformat()) }}">{{ dia.day }}</a>
+                            {% set escolhido = data_escolhida == dia.isoformat() %}
+                            <a class="dia {{ 'escolhido' if escolhido }} {{ 'hoje' if dia == hoje }}"
+                               href="{{ url_for('agendamentos.escolher', instrutor_id=instrutor['id'], mes=mes, data=dia.isoformat()) }}#horarios"
+                               aria-label="{{ dia | extenso }}{{ ', hoje' if dia == hoje }}"
+                               {{ 'aria-current=date' if escolhido }}>{{ dia.day }}</a>
                         {% endif %}
                     </td>
                     {% endfor %}
@@ -48,77 +65,67 @@
                 {% endfor %}
             </tbody>
         </table>
-    </div>
+    </section>
 
+    <div class="agendar-detalhes" id="horarios">
     {% if data_escolhida %}
-    <section class="secao">
-        <h2 class="titulo-secao">Horário</h2>
-        <div class="card">
-            <div class="grade-horarios">
-                {% for horario in horarios %}
-                    {% if horario in horarios_ocupados %}
-                        <span class="horario horario-ocupado" title="Horário já reservado">{{ horario }}</span>
-                    {% else %}
-                        <label class="horario">
-                            <input type="radio" name="horario" value="{{ horario }}" required>
-                            <span>{{ horario }}</span>
-                        </label>
-                    {% endif %}
-                {% endfor %}
-            </div>
-            {% if horarios_ocupados %}
-            <p class="dica-campo">Horários em cinza já estão reservados.</p>
-            {% endif %}
-        </div>
-    </section>
+        <form method="POST" action="{{ url_for('agendamentos.revisar', instrutor_id=instrutor['id']) }}" class="formulario">
+            {{ campo_csrf() }}
+            <input type="hidden" name="data" value="{{ data_escolhida }}">
 
-    {% if veiculos %}
-    <section class="secao">
-        <h2 class="titulo-secao">Veículo</h2>
-        <p class="texto-secundario ajuda-secao">A locação é somada ao valor da aula.</p>
-
-        <label class="cartao-veiculo veiculo-opcao">
-            <input type="radio" name="veiculo_id" value="" checked>
-            <div class="veiculo-info">
-                <h3>Veículo próprio</h3>
-                <p class="veiculo-preco">Sem custo de locação</p>
-                <p class="veiculo-total texto-secundario">
-                    Total da aula: <strong>R$ {{ "%.2f"|format(instrutor["valor_aula"]) | replace(".", ",") }}</strong>
-                </p>
-            </div>
-        </label>
-
-        {% for veiculo in veiculos %}
-        <label class="cartao-veiculo veiculo-opcao">
-            <input type="radio" name="veiculo_id" value="{{ veiculo['id'] }}">
-            <img class="veiculo-imagem" src="{{ url_for('static', filename=veiculo['imagem']) }}"
-                 alt="{{ veiculo['marca'] }} {{ veiculo['modelo'] }}">
-            <div class="veiculo-info">
-                <h3>{{ veiculo["marca"] }} {{ veiculo["modelo"] }}</h3>
-                <div class="veiculo-etiquetas">
-                    <span class="etiqueta etiqueta-categoria">CNH {{ veiculo["categoria_cnh"] }}</span>
-                    <span class="etiqueta">{{ "Automático" if veiculo["transmissao"] == "automatico" else "Manual" }}</span>
-                    {% if veiculo["adaptado"] %}<span class="etiqueta etiqueta-pcd">Adaptado</span>{% endif %}
+            <fieldset class="grupo cartao">
+                <legend>Horário <span class="legenda-detalhe">{{ data_extenso }}</span></legend>
+                {% if horarios_livres %}
+                <div class="grade-horarios">
+                    {% for horario in horarios %}
+                    <label class="horario {{ 'indisponivel' if horario.indisponivel }}">
+                        <input type="radio" name="horario" value="{{ horario.hora }}" required
+                               {{ "disabled" if horario.indisponivel }} {{ "checked" if horario.hora == horario_marcado and not horario.indisponivel }}>
+                        <span>{{ horario.hora }}</span>
+                        {% if horario.indisponivel %}<span class="oculto">: {{ horario.indisponivel }}</span>{% endif %}
+                    </label>
+                    {% endfor %}
                 </div>
-                <p class="veiculo-preco">
-                    + R$ {{ "%.2f"|format(veiculo["valor_locacao"]) | replace(".", ",") }}
-                    <span class="texto-secundario">locação / aula</span>
-                </p>
-                <p class="veiculo-total texto-secundario">
-                    Total da aula: <strong>R$ {{ "%.2f"|format(instrutor["valor_aula"] + veiculo["valor_locacao"]) | replace(".", ",") }}</strong>
-                </p>
-            </div>
-        </label>
-        {% endfor %}
-    </section>
-    {% endif %}
+                <p class="dica">Aulas de 1 hora. Horários riscados estão reservados ou já passaram.</p>
+                {% else %}
+                    <p class="sem-horarios">{{ icone("relogio") }}Nenhum horário livre neste dia. Escolha outro dia no calendário.</p>
+                {% endif %}
+            </fieldset>
 
-    <button type="submit" class="botao botao-primario">Revisar agendamento</button>
+            {% if horarios_livres %}
+            <fieldset class="grupo">
+                <legend>Veículo</legend>
+                <div class="opcoes-veiculo">
+                    <label class="opcao-veiculo">
+                        <input type="radio" name="veiculo_id" value="" checked>
+                        <span class="opcao-veiculo-icone">{{ icone("carro") }}</span>
+                        <span class="opcao-veiculo-texto">
+                            <strong>Veículo próprio</strong>
+                            <span>Sem locação</span>
+                        </span>
+                        <span class="opcao-veiculo-total">{{ instrutor["valor_aula"] | moeda }}</span>
+                    </label>
+                    {% for veiculo in veiculos %}
+                    <label class="opcao-veiculo">
+                        <input type="radio" name="veiculo_id" value="{{ veiculo['id'] }}">
+                        <img src="{{ url_for('static', filename=veiculo['imagem']) }}" alt="" width="64" height="42" loading="lazy" decoding="async">
+                        <span class="opcao-veiculo-texto">
+                            <strong>{{ veiculo["marca"] }} {{ veiculo["modelo"] }}</strong>
+                            <span>{{ "Automático" if veiculo["transmissao"] == "automatico" else "Manual" }}{{ " · adaptado" if veiculo["adaptado"] }} · + {{ veiculo["valor_locacao"] | moeda }}</span>
+                        </span>
+                        <span class="opcao-veiculo-total">{{ (instrutor["valor_aula"] + veiculo["valor_locacao"]) | moeda }}</span>
+                    </label>
+                    {% endfor %}
+                </div>
+            </fieldset>
+
+            <button type="submit" class="botao botao-primario botao-bloco botao-lg">Revisar agendamento{{ icone("avancar") }}</button>
+            {% endif %}
+        </form>
     {% else %}
-    <div class="card">
-        <p class="texto-secundario">Escolha um dia no calendário para ver os horários disponíveis.</p>
-    </div>
+        {{ estado_vazio("Escolha um dia", "Os horários livres aparecem aqui assim que você tocar em um dia do calendário.") }}
     {% endif %}
-</form>
+    </div>
+</div>
 
 {% endblock %}

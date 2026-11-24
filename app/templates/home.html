@@ -1,111 +1,137 @@
 {% extends "base.html" %}
-{% from "_cartao_instrutor.html" import cartao, foto %}
+{% from "_componentes.html" import cartao_instrutor, foto, icone, status_aula, estado_vazio, campo_csrf %}
 {% block title %}Início · Habilita+{% endblock %}
 {% block content %}
 
-<header class="cabecalho-app">
-    <div>
-        <p class="texto-secundario">Olá,</p>
-        <h1 class="titulo-saudacao">{{ usuario["nome"].split()[0] }}</h1>
-    </div>
+<header class="saudacao">
+    <p class="sobretitulo">{{ "Painel do instrutor" if usuario["tipo"] == "instrutor" else "Olá" }}</p>
+    <h1>{{ usuario["nome"] | primeiro_nome }}{{ "" if usuario["tipo"] == "instrutor" else "," }}</h1>
+    {% if usuario["tipo"] == "candidato" %}
+    <p class="saudacao-texto">Vamos encontrar o instrutor certo para você.</p>
+    {% endif %}
 </header>
 
 {% if usuario["tipo"] == "candidato" %}
 
-    <a class="busca-atalho" href="{{ url_for('busca.buscar', cidade=usuario['cidade']) }}">
-        <span aria-hidden="true">🔎</span>
-        <span>Buscar instrutores {{ "em " ~ usuario["cidade"] if usuario["cidade"] }}</span>
-    </a>
+    <form class="busca-rapida" action="{{ url_for('busca.buscar') }}" method="GET" role="search">
+        <label for="busca-rapida" class="oculto">Buscar instrutor por nome ou região</label>
+        {{ icone("busca") }}
+        <input type="search" id="busca-rapida" name="q" placeholder="Instrutor ou região" maxlength="60">
+        {% if usuario["cidade"] %}<input type="hidden" name="cidade" value="{{ usuario['cidade'] }}">{% endif %}
+        <button type="submit" class="botao botao-primario botao-sm">Buscar</button>
+    </form>
+    {% if usuario["cidade"] %}
+    <p class="dica busca-rapida-dica">Buscando em {{ usuario["cidade"] }}. <a href="{{ url_for('busca.buscar', ordenar='avaliacao') }}">Ver todas as cidades</a></p>
+    {% endif %}
 
-    {% if minhas_aulas %}
-    <section class="secao">
-        <div class="secao-cabecalho">
-            <h2>Minhas aulas</h2>
-            <a href="{{ url_for('agendamentos.minhas_aulas') }}">Ver todas</a>
-        </div>
-
-        {% for aula in minhas_aulas %}
-        <article class="cartao-aula">
-            <div class="aula-info">
+    {% if para_avaliar %}
+    <section class="secao" aria-labelledby="titulo-avaliar">
+        <h2 id="titulo-avaliar" class="titulo-secao">Como foi sua aula?</h2>
+        {% for aula in para_avaliar %}
+        <article class="cartao cartao-acao">
+            {{ foto(aula["foto_instrutor"], aula["nome_instrutor"], "sm") }}
+            <div class="cartao-acao-texto">
                 <strong>{{ aula["nome_instrutor"] }}</strong>
-                <p class="texto-secundario">{{ aula["data_formatada"] }} às {{ aula["horario"] }}</p>
-                <span class="status status-{{ aula['status'] }}">{{ aula["status"]|capitalize }}</span>
+                <span>Aula de {{ aula["data_formatada"] }}</span>
             </div>
-            {% if aula["status"] == "concluido" and not aula["avaliacao_id"] %}
-                <a class="botao-pequeno" href="{{ url_for('avaliacoes.avaliar', agendamento_id=aula['id']) }}">Avaliar</a>
-            {% elif aula["avaliacao_id"] %}
-                <span class="texto-secundario aula-avaliada">Avaliada ✓</span>
-            {% endif %}
+            <a class="botao botao-primario botao-sm" href="{{ url_for('avaliacoes.avaliar', agendamento_id=aula['id']) }}">Avaliar</a>
         </article>
         {% endfor %}
     </section>
     {% endif %}
 
-    <section class="secao">
+    <section class="secao" aria-labelledby="titulo-proximas">
         <div class="secao-cabecalho">
-            <h2>Instrutores em destaque</h2>
+            <h2 id="titulo-proximas" class="titulo-secao">Próximas aulas</h2>
+            <a href="{{ url_for('agendamentos.minhas_aulas') }}">Ver todas</a>
+        </div>
+        {% for aula in proximas %}
+        <a class="cartao cartao-aula-resumo" href="{{ url_for('agendamentos.minhas_aulas') }}#aula-{{ aula['id'] }}">
+            <span class="data-bloco" aria-hidden="true">
+                <span>{{ aula["data_formatada"][:2] }}</span><small>{{ ["jan","fev","mar","abr","mai","jun","jul","ago","set","out","nov","dez"][aula["data"][5:7]|int - 1] }}</small>
+            </span>
+            <span class="cartao-aula-resumo-texto">
+                <strong>{{ aula["horario"] }} · {{ aula["nome_instrutor"] }}</strong>
+                <span>{{ aula["data_formatada"] }} · {{ aula["marca"] ~ " " ~ aula["modelo"] if aula["marca"] else "Veículo próprio" }}</span>
+            </span>
+            {{ status_aula(aula["status"]) }}
+        </a>
+        {% else %}
+        {{ estado_vazio("Nenhuma aula marcada", "Escolha um instrutor abaixo e agende em poucos toques.") }}
+        {% endfor %}
+    </section>
+
+    <section class="secao" aria-labelledby="titulo-destaques">
+        <div class="secao-cabecalho">
+            <h2 id="titulo-destaques" class="titulo-secao">Instrutores em destaque</h2>
             <a href="{{ url_for('busca.buscar', ordenar='avaliacao') }}">Ver todos</a>
         </div>
-
-        {% for instrutor in instrutores %}
-            {{ cartao(instrutor) }}
-        {% else %}
-            <div class="card">
-                <p class="texto-secundario">Nenhum instrutor cadastrado ainda.</p>
-            </div>
-        {% endfor %}
+        <div class="grade-cartoes">
+            {% for instrutor in instrutores %}
+                {{ cartao_instrutor(instrutor) }}
+            {% else %}
+                {{ estado_vazio("Ainda não há instrutores", "Assim que profissionais se cadastrarem, eles aparecem aqui.", nome_icone="usuario") }}
+            {% endfor %}
+        </div>
     </section>
 
 {% else %}
 
     {% if resumo and not resumo["verificado"] %}
-    <div class="aviso-analise">
-        <span aria-hidden="true">⏳</span>
-        <span>
-            Seu perfil está <strong>em análise</strong>. Ele já aparece nas buscas com esse aviso,
-            e ganha o selo de verificado assim que a equipe confirmar seus documentos.
-        </span>
+    <div class="aviso">
+        {{ icone("relogio") }}
+        <p>Seu perfil está <strong>em análise</strong>. Ele já aparece nas buscas com esse aviso e recebe o selo de verificado quando a equipe confirmar seus documentos.</p>
     </div>
     {% endif %}
 
     {% if resumo %}
-    <div class="painel-numeros">
-        <div class="painel-numero">
-            <strong>{{ "%.1f"|format(resumo["media_estrelas"]) if resumo["total_avaliacoes"] else "—" }}</strong>
-            <span>avaliação</span>
+    <dl class="metricas">
+        <div>
+            <dt>Avaliação média</dt>
+            <dd>{{ ("%.1f"|format(resumo["media_estrelas"])) | replace(".", ",") if resumo["total_avaliacoes"] else "—" }}<small>{{ resumo["total_avaliacoes"] }} {{ "avaliação" if resumo["total_avaliacoes"] == 1 else "avaliações" }}</small></dd>
         </div>
-        <div class="painel-numero">
-            <strong>{{ resumo["aulas_concluidas"] }}</strong>
-            <span>aulas dadas</span>
+        <div>
+            <dt>Aulas dadas</dt>
+            <dd>{{ resumo["aulas_concluidas"] }}<small>concluídas</small></dd>
         </div>
-        <div class="painel-numero">
-            <strong>R$ {{ "%.0f"|format(resumo["valor_aula"]) }}</strong>
-            <span>por aula</span>
+        <div>
+            <dt>Aguardando você</dt>
+            <dd>{{ resumo["aguardando_confirmacao"] }}<small>para confirmar</small></dd>
         </div>
-    </div>
+        <div>
+            <dt>Seu valor</dt>
+            <dd>{{ resumo["valor_aula"] | moeda }}<small><a href="{{ url_for('instrutores.editar_perfil') }}">Alterar</a></small></dd>
+        </div>
+    </dl>
     {% endif %}
 
-    <section class="secao">
+    <section class="secao" aria-labelledby="titulo-agenda">
         <div class="secao-cabecalho">
-            <h2>Próximas aulas</h2>
-            {% if resumo %}
-            <a href="{{ url_for('instrutores.perfil', instrutor_id=resumo['id']) }}">Meu perfil</a>
-            {% endif %}
+            <h2 id="titulo-agenda" class="titulo-secao">Próximas aulas</h2>
+            <a href="{{ url_for('agendamentos.minhas_aulas') }}">Agenda completa</a>
         </div>
 
         {% for aula in agenda %}
-        <article class="cartao-aula">
-            <div class="aula-info">
+        <article class="cartao cartao-acao">
+            <span class="data-bloco" aria-hidden="true">
+                <span>{{ aula["data_formatada"][:2] }}</span><small>{{ aula["horario"] }}</small>
+            </span>
+            <div class="cartao-acao-texto">
                 <strong>{{ aula["nome_candidato"] }}</strong>
-                <p class="texto-secundario">{{ aula["data_formatada"] }} às {{ aula["horario"] }}</p>
-                <span class="status status-{{ aula['status'] }}">{{ aula["status"]|capitalize }}</span>
+                <span>{{ aula["data_formatada"] }} às {{ aula["horario"] }} · {{ (aula["valor"] + aula["valor_locacao"]) | moeda }}</span>
             </div>
-            <span class="aula-avaliada">R$ {{ "%.2f"|format(aula["valor"] + aula["valor_locacao"]) | replace(".", ",") }}</span>
+            {% if aula["status"] == "agendado" %}
+            <form method="POST" action="{{ url_for('agendamentos.aceitar', agendamento_id=aula['id']) }}">
+                {{ campo_csrf() }}
+                <input type="hidden" name="voltar" value="home">
+                <button type="submit" class="botao botao-primario botao-sm" data-enviando="…">Confirmar</button>
+            </form>
+            {% else %}
+                {{ status_aula(aula["status"]) }}
+            {% endif %}
         </article>
         {% else %}
-        <div class="card estado-vazio">
-            <p class="texto-secundario">Nenhuma aula marcada por enquanto.</p>
-        </div>
+        {{ estado_vazio("Nenhuma aula marcada", "Quando um candidato agendar com você, a aula aparece aqui para você confirmar.") }}
         {% endfor %}
     </section>
 

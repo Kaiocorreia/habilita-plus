@@ -1,0 +1,47 @@
+{# Campos do perfil profissional. Usado no cadastro e na edição do perfil. #}
+{% set descricoes = {"A": "Motos", "B": "Carros", "C": "Caminhões", "D": "Ônibus", "E": "Carretas"} %}
+
+<fieldset class="grupo">
+    <legend>Categorias que você ensina</legend>
+    <div class="grade-categorias">
+        {% for categoria in categorias %}
+        <label class="opcao-categoria">
+            <input type="checkbox" name="categorias_cnh" value="{{ categoria }}"
+                   {{ "checked" if categoria in dados.get("categorias", []) }}>
+            <strong>{{ categoria }}</strong>
+            <span>{{ descricoes[categoria] }}</span>
+        </label>
+        {% endfor %}
+    </div>
+</fieldset>
+
+<div class="campo-duplo">
+    <div class="campo">
+        <label for="valor_aula">Valor por aula</label>
+        <div class="campo-prefixo">
+            <span class="prefixo" aria-hidden="true">R$</span>
+            <input type="text" id="valor_aula" name="valor_aula" inputmode="decimal" required
+                   placeholder="90,00" maxlength="9" value="{{ dados.get('valor_texto', '') }}"
+                   aria-describedby="dica-valor">
+        </div>
+        <p class="dica" id="dica-valor">Sem a locação do carro, que é somada à parte.</p>
+    </div>
+    <div class="campo">
+        <label for="regiao_atuacao">Região de atuação <span class="opcional">(opcional)</span></label>
+        <input type="text" id="regiao_atuacao" name="regiao_atuacao" maxlength="80"
+               placeholder="Ex.: Grande Vitória" value="{{ dados.get('regiao_atuacao', '') }}">
+    </div>
+</div>
+
+<fieldset class="grupo">
+    <legend>Atendimento</legend>
+    <p class="dica dica-legenda">Cada item marcado vira um filtro de busca para os candidatos.</p>
+    <div class="opcoes">
+        {% for coluna, titulo, texto in atendimentos %}
+        <label class="opcao opcao-check">
+            <input type="checkbox" name="{{ coluna }}" {{ "checked" if dados.get(coluna) }}>
+            <span class="opcao-texto"><strong>{{ titulo }}</strong><span>{{ texto }}</span></span>
+        </label>
+        {% endfor %}
+    </div>
+</fieldset>

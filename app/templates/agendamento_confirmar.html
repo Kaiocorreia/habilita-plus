@@ -1,60 +1,48 @@
 {% extends "base.html" %}
-{% from "_cartao_instrutor.html" import foto %}
+{% from "_componentes.html" import foto, icone, campo_csrf %}
 {% block title %}Confirmar agendamento · Habilita+{% endblock %}
+{% block main_class %}conteudo-estreito{% endblock %}
 {% block content %}
 
-<header class="cabecalho-app">
-    <a class="link-voltar" href="{{ url_for('agendamentos.escolher', instrutor_id=instrutor['id']) }}">← Voltar</a>
+<a class="link-voltar" href="{{ url_for('agendamentos.escolher', instrutor_id=instrutor['id'], data=data, horario=horario) }}">{{ icone("voltar") }}Alterar</a>
+
+<header class="cabecalho-pagina">
+    <h1>Confira e confirme</h1>
+    <p class="cabecalho-subtitulo">Nada é cobrado pelo Habilita+. O pagamento é combinado direto com o instrutor.</p>
 </header>
 
-<h1 class="titulo-saudacao">Confirmar</h1>
-<p class="texto-secundario ajuda-secao">Revise os dados antes de finalizar.</p>
+<ol class="trilha" aria-label="Etapas do agendamento">
+    <li class="feita">Dia</li>
+    <li class="feita">Horário e veículo</li>
+    <li class="atual">Confirmar</li>
+</ol>
 
-<div class="card resumo">
-    <div class="resumo-instrutor">
-        {{ foto(instrutor) }}
+<section class="cartao recibo" aria-label="Resumo do agendamento">
+    <div class="recibo-pessoa">
+        {{ foto(instrutor["foto_url"], instrutor["nome"]) }}
         <div>
             <strong>{{ instrutor["nome"] }}</strong>
-            <p class="texto-secundario">{{ instrutor["regiao_atuacao"] }}</p>
+            <span>{{ instrutor["regiao_atuacao"] or instrutor["cidade"] }}</span>
         </div>
     </div>
 
-    <dl class="resumo-lista">
-        <div>
-            <dt>Data</dt>
-            <dd>{{ data_extenso }}</dd>
-        </div>
-        <div>
-            <dt>Horário</dt>
-            <dd>{{ horario }}</dd>
-        </div>
-        <div>
-            <dt>Veículo</dt>
-            <dd>{{ veiculo["marca"] ~ " " ~ veiculo["modelo"] if veiculo else "Veículo próprio" }}</dd>
-        </div>
+    <dl class="recibo-itens">
+        <div><dt>{{ icone("calendario") }}Data</dt><dd>{{ data_extenso | capitalize }}</dd></div>
+        <div><dt>{{ icone("relogio") }}Horário</dt><dd>{{ horario }} · 1 hora</dd></div>
+        <div><dt>{{ icone("carro") }}Veículo</dt><dd>{{ veiculo["marca"] ~ " " ~ veiculo["modelo"] if veiculo else "Veículo próprio" }}</dd></div>
     </dl>
 
-    <dl class="resumo-valores">
-        <div>
-            <dt>Aula com {{ instrutor["nome"].split()[0] }}</dt>
-            <dd>R$ {{ "%.2f"|format(instrutor["valor_aula"]) | replace(".", ",") }}</dd>
-        </div>
-        {% if veiculo %}
-        <div>
-            <dt>Locação do veículo</dt>
-            <dd>R$ {{ "%.2f"|format(valor_locacao) | replace(".", ",") }}</dd>
-        </div>
-        {% endif %}
-        <div class="resumo-total">
-            <dt>Total</dt>
-            <dd>R$ {{ "%.2f"|format(total) | replace(".", ",") }}</dd>
-        </div>
+    <dl class="recibo-valores">
+        <div><dt>Aula</dt><dd>{{ instrutor["valor_aula"] | moeda }}</dd></div>
+        {% if veiculo %}<div><dt>Locação do veículo</dt><dd>{{ valor_locacao | moeda }}</dd></div>{% endif %}
+        <div class="recibo-total"><dt>Total</dt><dd>{{ total | moeda }}</dd></div>
     </dl>
-</div>
+</section>
 
-<form method="POST">
-    <button type="submit" class="botao botao-primario">Confirmar agendamento</button>
+<form method="POST" class="formulario">
+    {{ campo_csrf() }}
+    <button type="submit" class="botao botao-primario botao-bloco botao-lg" data-enviando="Agendando…">Confirmar agendamento</button>
 </form>
-<p class="rodape-acao">O pagamento é combinado diretamente com o profissional.</p>
+<p class="nota-rodape">Se precisar, você pode cancelar em Minhas aulas até o horário de início.</p>
 
 {% endblock %}

@@ -1,5 +1,9 @@
-from flask import Blueprint, current_app, redirect, render_template, send_from_directory, session, url_for
+from flask import (Blueprint, Response, current_app, g, redirect, render_template,
+                   request, send_from_directory, session, url_for)
 
+from app.agenda import concluir_aulas_passadas, hoje
+from app.consultas import ORDEM_RELEVANCIA, SELECT_AULAS, SELECT_INSTRUTORES
+from app.sessao import exige_login
 from database.db import get_connection
 
 main_bp = Blueprint("main", __name__)
@@ -7,72 +11,7 @@ main_bp = Blueprint("main", __name__)
 # Perfis não verificados também aparecem, mas depois dos verificados e com um selo
 # "Em análise" no cartão. Se ficassem escondidos, quem acabou de se cadastrar como
 # instrutor não se veria em lugar nenhum do site.
-CONSULTA_INSTRUTORES = """
-    SELECT i.id,
-           u.nome,
-           u.cidade,
-           u.foto_url,
-           (SELECT GROUP_CONCAT(categoria)
-              FROM (SELECT categoria FROM instrutor_categorias
-                     WHERE instrutor_id = i.id ORDER BY categoria)) AS categorias_cnh,
-           i.valor_aula,
-           i.regiao_atuacao,
-           i.verificado,
-           i.atende_libras,
-           i.somente_mulheres,
-           i.atende_neurodivergentes,
-           i.atende_pcd,
-           i.veiculo_adaptado_disponivel,
-           ROUND(AVG(a.nota), 1) AS media_estrelas,
-           COUNT(a.id)           AS total_avaliacoes
-    FROM instrutores i
-    JOIN usuarios u ON u.id = i.usuario_id
-    LEFT JOIN avaliacoes a ON a.instrutor_id = i.id
-    GROUP BY i.id
-    ORDER BY i.verificado DESC,
-             (media_estrelas IS NULL), media_estrelas DESC, total_avaliacoes DESC
-    LIMIT 5
-"""
-
-CONSULTA_MINHAS_AULAS = """
-    SELECT ag.id,
-           ag.data,
-           ag.horario,
-           ag.status,
-           ag.valor,
-           ag.valor_locacao,
-           strftime('%d/%m/%Y', ag.data) AS data_formatada,
-           u.nome  AS nome_instrutor,
-           u.foto_url,
-           i.id    AS instrutor_id,
-           av.id   AS avaliacao_id
-    FROM agendamentos ag
-    JOIN instrutores i ON i.id = ag.instrutor_id
-    JOIN usuarios u ON u.id = i.usuario_id
-    LEFT JOIN avaliacoes av ON av.agendamento_id = ag.id
-    WHERE ag.candidato_id = ?
-    ORDER BY ag.data DESC
-    LIMIT 3
-"""
-
-CONSULTA_AGENDA_INSTRUTOR = """
-    SELECT ag.id,
-           ag.horario,
-           ag.status,
-           ag.valor,
-           ag.valor_locacao,
-           strftime('%d/%m/%Y', ag.data) AS data_formatada,
-           u.nome AS nome_candidato,
-           u.foto_url
-    FROM agendamentos ag
-    JOIN instrutores i ON i.id = ag.instrutor_id
-    JOIN usuarios u ON u.id = ag.candidato_id
-    WHERE i.usuario_id = ?
-      AND ag.status IN ('agendado', 'confirmado')
-      AND ag.data >= date('now')
-    ORDER BY ag.data ASC, ag.horario ASC
-    LIMIT 5
-"""
+CONSULTA_DESTAQUES = SELECT_INSTRUTORES + f" GROUP BY i.id ORDER BY {ORDEM_RELEVANCIA} LIMIT 6"
 
 CONSULTA_RESUMO_INSTRUTOR = """
     SELECT i.id,
@@ -81,63 +20,127 @@ CONSULTA_RESUMO_INSTRUTOR = """
            ROUND(AVG(av.nota), 1) AS media_estrelas,
            COUNT(av.id)           AS total_avaliacoes,
            (SELECT COUNT(*) FROM agendamentos
-             WHERE instrutor_id = i.id AND status = 'concluido') AS aulas_concluidas
+             WHERE instrutor_id = i.id AND status = 'concluido') AS aulas_concluidas,
+           (SELECT COUNT(*) FROM agendamentos
+             WHERE instrutor_id = i.id AND status = 'agendado') AS aguardando_confirmacao
     FROM instrutores i
     LEFT JOIN avaliacoes av ON av.instrutor_id = i.id
     WHERE i.usuario_id = ?
     GROUP BY i.id
 """
 
+PAGINAS_PUBLICAS = ("main.splash", "auth.login", "auth.cadastro_tipo")
+
 
 @main_bp.route("/")
 def splash():
-    return render_template("splash.html")
+    if session.get("usuario_id"):
+        return redirect(url_for("main.home"))
+
+    conexao = get_connection()
+    numeros = conexao.execute(
+        """
+        SELECT (SELECT COUNT(*) FROM instrutores)                   AS instrutores,
+               (SELECT COUNT(*) FROM instrutores WHERE atende_libras = 1
+                   OR atende_pcd = 1 OR veiculo_adaptado_disponivel = 1) AS inclusivos,
+               (SELECT COUNT(*) FROM avaliacoes)                    AS avaliacoes
+        """
+    ).fetchone()
+    conexao.close()
+    return render_template("splash.html", numeros=numeros)
 
 
 @main_bp.route("/service-worker.js")
 def service_worker():
+    # Servido da raiz (e não de /static/) porque o escopo de um service worker é
+    # a pasta de onde ele vem: de /static/ ele só controlaria /static/*.
     resposta = send_from_directory(current_app.static_folder, "service-worker.js")
     resposta.headers["Service-Worker-Allowed"] = "/"
+    resposta.headers["Cache-Control"] = "no-cache"
     return resposta
 
 
+@main_bp.route("/offline")
+def offline():
+    return render_template("offline.html")
+
+
+@main_bp.route("/robots.txt")
+def robots():
+    linhas = [
+        "User-agent: *",
+        "Allow: /$",
+        "Allow: /login",
+        "Allow: /cadastro$",
+        # Áreas que dependem de login não têm conteúdo útil para buscadores.
+        "Disallow: /home",
+        "Disallow: /busca",
+        "Disallow: /instrutor/",
+        "Disallow: /agendamento/",
+        "Disallow: /minhas-aulas",
+        "Disallow: /perfil",
+        "Disallow: /cadastro/",
+        "Disallow: /logout",
+        f"Sitemap: {url_for('main.sitemap', _external=True)}",
+    ]
+    return Response("\n".join(linhas) + "\n", mimetype="text/plain")
+
+
+@main_bp.route("/sitemap.xml")
+def sitemap():
+    urls = "".join(
+        f"<url><loc>{url_for(pagina, _external=True)}</loc></url>" for pagina in PAGINAS_PUBLICAS
+    )
+    xml = (
+        '<?xml version="1.0" encoding="UTF-8"?>'
+        f'<urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9">{urls}</urlset>'
+    )
+    return Response(xml, mimetype="application/xml")
+
+
 @main_bp.route("/home")
+@exige_login()
 def home():
-    if "usuario_id" not in session:
-        return redirect(url_for("auth.login"))
-
     conexao = get_connection()
-    usuario = conexao.execute(
-        "SELECT nome, tipo, cidade FROM usuarios WHERE id = ?",
-        (session["usuario_id"],),
-    ).fetchone()
+    concluir_aulas_passadas(conexao)
+    usuario = g.usuario
 
-    # O cookie pode apontar para um usuário que não existe mais (conta apagada ou
-    # banco recriado, o que muda os IDs). Sem isso, o template quebraria com 500.
-    if usuario is None:
-        conexao.close()
-        session.clear()
-        return redirect(url_for("auth.login"))
-
-    minhas_aulas = []
-    agenda = []
-    resumo = None
+    contexto = {"usuario": usuario}
 
     if usuario["tipo"] == "candidato":
-        instrutores = conexao.execute(CONSULTA_INSTRUTORES).fetchall()
-        minhas_aulas = conexao.execute(CONSULTA_MINHAS_AULAS, (session["usuario_id"],)).fetchall()
+        contexto["instrutores"] = conexao.execute(CONSULTA_DESTAQUES).fetchall()
+        contexto["proximas"] = conexao.execute(
+            SELECT_AULAS + """
+            WHERE ag.candidato_id = ? AND ag.status IN ('agendado', 'confirmado')
+            ORDER BY ag.data, ag.horario LIMIT 2
+            """,
+            (usuario["id"],),
+        ).fetchall()
+        contexto["para_avaliar"] = conexao.execute(
+            SELECT_AULAS + """
+            WHERE ag.candidato_id = ? AND ag.status = 'concluido' AND av.id IS NULL
+            ORDER BY ag.data DESC LIMIT 2
+            """,
+            (usuario["id"],),
+        ).fetchall()
     else:
-        instrutores = []
-        agenda = conexao.execute(CONSULTA_AGENDA_INSTRUTOR, (session["usuario_id"],)).fetchall()
-        resumo = conexao.execute(CONSULTA_RESUMO_INSTRUTOR, (session["usuario_id"],)).fetchone()
+        contexto["resumo"] = conexao.execute(CONSULTA_RESUMO_INSTRUTOR, (usuario["id"],)).fetchone()
+        contexto["agenda"] = conexao.execute(
+            SELECT_AULAS + """
+            WHERE i.usuario_id = ? AND ag.status IN ('agendado', 'confirmado') AND ag.data >= ?
+            ORDER BY ag.data, ag.horario LIMIT 5
+            """,
+            (usuario["id"], hoje().isoformat()),
+        ).fetchall()
 
     conexao.close()
+    return render_template("home.html", **contexto)
 
-    return render_template(
-        "home.html",
-        usuario=usuario,
-        instrutores=instrutores,
-        minhas_aulas=minhas_aulas,
-        agenda=agenda,
-        resumo=resumo,
-    )
+
+@main_bp.app_context_processor
+def dados_de_navegacao():
+    """Disponível em todo template: destino da navegação e indexação da página."""
+    return {
+        "pagina_publica": request.endpoint in PAGINAS_PUBLICAS,
+        "url_canonica": request.base_url,
+    }

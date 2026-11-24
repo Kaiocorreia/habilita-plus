@@ -1,32 +1,43 @@
 {% extends "base.html" %}
+{% from "_componentes.html" import campo_csrf, icone %}
 {% block title %}Criar conta · Habilita+{% endblock %}
+{% block description %}Crie sua conta no Habilita+ como candidato à CNH ou como instrutor de autoescola no Espírito Santo.{% endblock %}
+{% block main_class %}conteudo-estreito{% endblock %}
 {% block content %}
-<div class="card">
-    <div class="cabecalho-tela">
-        <h1>Criar conta</h1>
-        <p class="texto-secundario">Como você quer usar o Habilita+?</p>
-    </div>
 
-    <form method="POST">
-        <div class="opcoes-lista">
-            <label class="opcao-cartao">
-                <input type="radio" name="tipo" value="candidato" required>
-                <span class="opcao-texto">
-                    <strong>Sou candidato(a) à CNH</strong>
-                    <span>Quero encontrar instrutores e agendar aulas.</span>
-                </span>
-            </label>
-            <label class="opcao-cartao">
-                <input type="radio" name="tipo" value="instrutor">
-                <span class="opcao-texto">
-                    <strong>Sou instrutor(a) ou autoescola</strong>
-                    <span>Quero oferecer aulas na plataforma.</span>
-                </span>
-            </label>
-        </div>
-        <button type="submit" class="botao botao-primario">Continuar</button>
+<div class="painel-auth">
+    <header class="cabecalho-auth">
+        <h1>Criar conta</h1>
+        <p>Leva menos de dois minutos.</p>
+    </header>
+
+    <form method="POST" class="formulario">
+        {{ campo_csrf() }}
+        <fieldset class="grupo">
+            <legend>Como você quer usar o Habilita+?</legend>
+            <div class="opcoes">
+                <label class="opcao">
+                    <input type="radio" name="tipo" value="candidato" required>
+                    <span class="opcao-icone">{{ icone("busca") }}</span>
+                    <span class="opcao-texto">
+                        <strong>Quero tirar minha CNH</strong>
+                        <span>Encontrar instrutores e agendar aulas.</span>
+                    </span>
+                </label>
+                <label class="opcao">
+                    <input type="radio" name="tipo" value="instrutor">
+                    <span class="opcao-icone">{{ icone("carro") }}</span>
+                    <span class="opcao-texto">
+                        <strong>Sou instrutor(a) ou autoescola</strong>
+                        <span>Oferecer aulas e receber agendamentos.</span>
+                    </span>
+                </label>
+            </div>
+        </fieldset>
+        <button type="submit" class="botao botao-primario botao-bloco">Continuar</button>
     </form>
+
+    <p class="rodape-auth">Já tem conta? <a href="{{ url_for('auth.login') }}">Entrar</a></p>
 </div>
 
-<p class="rodape-acao">Já tem conta? <a href="{{ url_for('auth.login') }}">Entrar</a></p>
 {% endblock %}

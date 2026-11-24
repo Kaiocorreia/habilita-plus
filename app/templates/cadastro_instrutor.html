@@ -1,61 +1,23 @@
 {% extends "base.html" %}
-{% block title %}Perfil profissional · Habilita+{% endblock %}
+{% from "_componentes.html" import campo_csrf, progresso %}
+{% block title %}Perfil profissional · Criar conta · Habilita+{% endblock %}
+{% block main_class %}conteudo-estreito{% endblock %}
 {% block content %}
-<div class="card">
-    <div class="cabecalho-tela">
-        <p class="progresso-etapas">Etapa 2 de 2</p>
-        <h1>Perfil profissional</h1>
-        <p class="texto-secundario">Essas informações aparecem no seu perfil público.</p>
-    </div>
 
-    <form method="POST">
-        <div class="campo">
-            <label>Categorias de CNH que você ensina</label>
-            <div class="opcoes-grade">
-                {% for categoria in categorias %}
-                <label>
-                    <input type="checkbox" name="categorias_cnh" value="{{ categoria }}">
-                    {{ categoria }}
-                </label>
-                {% endfor %}
-            </div>
-        </div>
+<div class="painel-auth">
+    {{ progresso(etapa, total_etapas) }}
+    <header class="cabecalho-auth">
+        <h1>Seu perfil profissional</h1>
+        <p>Fica visível para os candidatos. Você pode editar tudo depois.</p>
+    </header>
 
-        <div class="campo">
-            <label for="valor_aula">Valor por aula (R$)</label>
-            <input type="number" id="valor_aula" name="valor_aula" step="0.01" min="0" placeholder="90.00" required>
-        </div>
-
-        <div class="campo">
-            <label for="regiao_atuacao">Região de atuação</label>
-            <input type="text" id="regiao_atuacao" name="regiao_atuacao" placeholder="Ex: Grande Vitória">
-        </div>
-
-        <div class="opcoes-lista">
-            <label class="opcao-cartao">
-                <input type="checkbox" name="atende_libras">
-                <span class="opcao-texto"><strong>Atendo em Libras</strong></span>
-            </label>
-            <label class="opcao-cartao">
-                <input type="checkbox" name="somente_mulheres">
-                <span class="opcao-texto"><strong>Sou mulher</strong><span>Você aparecerá quando candidatos filtrarem por instrutoras mulheres.</span></span>
-            </label>
-            <label class="opcao-cartao">
-                <input type="checkbox" name="atende_neurodivergentes">
-                <span class="opcao-texto"><strong>Experiência com pessoas neurodivergentes</strong><span>TDAH, autismo, dislexia e outros.</span></span>
-            </label>
-            <label class="opcao-cartao">
-                <input type="checkbox" name="atende_pcd">
-                <span class="opcao-texto"><strong>Experiência com pessoas com deficiência</strong><span>Surdez, baixa visão, mobilidade reduzida e outros.</span></span>
-            </label>
-            <label class="opcao-cartao">
-                <input type="checkbox" name="veiculo_adaptado_disponivel">
-                <span class="opcao-texto"><strong>Tenho veículo adaptado disponível</strong></span>
-            </label>
-        </div>
-
-        <button type="submit" class="botao botao-primario">Concluir cadastro</button>
+    <form method="POST" class="formulario">
+        {{ campo_csrf() }}
+        {% include "_campos_profissionais.html" %}
+        <button type="submit" class="botao botao-primario botao-bloco" data-enviando="Criando seu perfil…">Concluir cadastro</button>
     </form>
+
+    <p class="nota-rodape">Seu perfil aparece nas buscas desde já, com o selo “Em análise” até a equipe verificar seus documentos.</p>
 </div>
-<p class="rodape-acao">Seu perfil passará por uma verificação antes de aparecer nas buscas.</p>
+
 {% endblock %}

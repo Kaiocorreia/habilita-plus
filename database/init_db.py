@@ -1,7 +1,10 @@
 import os
 from pathlib import Path
 
-from db import get_connection, DB_PATH
+try:
+    from database.db import DB_PATH, get_connection
+except ImportError:  # executado como script: python database/init_db.py
+    from db import DB_PATH, get_connection
 
 SCHEMA_PATH = Path(__file__).resolve().parent / "schema.sql"
 

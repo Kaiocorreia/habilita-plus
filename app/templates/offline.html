@@ -1,0 +1,14 @@
+{% extends "base.html" %}
+{% from "_componentes.html" import icone %}
+{% block title %}Sem conexão · Habilita+{% endblock %}
+{% block main_class %}conteudo-estreito{% endblock %}
+{% block content %}
+
+<div class="pagina-erro">
+    <span class="pagina-erro-icone">{{ icone("sem-sinal") }}</span>
+    <h1>Você está sem conexão</h1>
+    <p>Agendamentos e buscas precisam de internet para mostrar horários atualizados. Assim que a conexão voltar, é só tentar de novo.</p>
+    <a class="botao botao-primario" href="{{ url_for('main.home') }}">Tentar de novo</a>
+</div>
+
+{% endblock %}

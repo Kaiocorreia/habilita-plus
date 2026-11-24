@@ -1,39 +1,36 @@
 {% extends "base.html" %}
+{% from "_componentes.html" import icone %}
 {% block title %}Aula agendada · Habilita+{% endblock %}
+{% block main_class %}conteudo-estreito{% endblock %}
 {% block content %}
 
 <div class="sucesso">
-    <div class="sucesso-icone" aria-hidden="true">✓</div>
-    <h1>Aula agendada com sucesso</h1>
-    <p class="texto-secundario">Enviamos os detalhes para o seu e-mail.</p>
+    <span class="sucesso-icone">{{ icone("check") }}</span>
+    <h1>Aula agendada</h1>
+    {# Antes dizia "Enviamos os detalhes para o seu e-mail" — mas nenhum e-mail é
+       enviado. O texto agora descreve o que de fato acontece. #}
+    <p>Agora é com {{ aula["nome_instrutor"] | primeiro_nome }}: a aula aparece como <strong>aguardando confirmação</strong> até o instrutor confirmar. Acompanhe em Minhas aulas.</p>
+</div>
 
-    <div class="card resumo">
-        <dl class="resumo-lista">
-            <div>
-                <dt>Instrutor</dt>
-                <dd>{{ agendamento["nome_instrutor"] }}</dd>
-            </div>
-            <div>
-                <dt>Data</dt>
-                <dd>{{ data_extenso }}</dd>
-            </div>
-            <div>
-                <dt>Horário</dt>
-                <dd>{{ agendamento["horario"] }}</dd>
-            </div>
-            <div>
-                <dt>Veículo</dt>
-                <dd>{{ agendamento["marca"] ~ " " ~ agendamento["modelo"] if agendamento["marca"] else "Veículo próprio" }}</dd>
-            </div>
-            <div class="resumo-total">
-                <dt>Total</dt>
-                <dd>R$ {{ "%.2f"|format(total) | replace(".", ",") }}</dd>
-            </div>
-        </dl>
-    </div>
+<section class="cartao recibo" aria-label="Resumo da aula">
+    <dl class="recibo-itens">
+        <div><dt>{{ icone("usuario") }}Instrutor</dt><dd>{{ aula["nome_instrutor"] }}</dd></div>
+        <div><dt>{{ icone("calendario") }}Data</dt><dd>{{ data_extenso | capitalize }}</dd></div>
+        <div><dt>{{ icone("relogio") }}Horário</dt><dd>{{ aula["horario"] }}</dd></div>
+        <div><dt>{{ icone("carro") }}Veículo</dt><dd>{{ aula["marca"] ~ " " ~ aula["modelo"] if aula["marca"] else "Veículo próprio" }}</dd></div>
+    </dl>
+    <dl class="recibo-valores">
+        <div class="recibo-total"><dt>Total</dt><dd>{{ total | moeda }}</dd></div>
+    </dl>
+</section>
 
-    <a class="botao botao-primario" href="{{ url_for('main.home') }}">Voltar para o início</a>
-    <a class="botao botao-secundario" href="{{ url_for('busca.buscar') }}">Agendar outra aula</a>
+<div class="acoes-empilhadas">
+    {% set contato = aula["telefone_instrutor"] | whatsapp %}
+    {% if contato %}
+    <a class="botao botao-primario botao-bloco" href="{{ contato }}" target="_blank" rel="noopener noreferrer">{{ icone("conversa") }}Falar com o instrutor no WhatsApp</a>
+    {% endif %}
+    <a class="botao botao-secundario botao-bloco" href="{{ url_for('agendamentos.minhas_aulas') }}">Ver minhas aulas</a>
+    <a class="botao-link" href="{{ url_for('busca.buscar') }}">Agendar outra aula</a>
 </div>
 
 {% endblock %}

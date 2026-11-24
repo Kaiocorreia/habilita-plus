@@ -1,45 +1,59 @@
 {% extends "base.html" %}
-{% block title %}Seus dados · Habilita+{% endblock %}
+{% from "_componentes.html" import campo_csrf, progresso %}
+{% block title %}Seus dados · Criar conta · Habilita+{% endblock %}
+{% block main_class %}conteudo-estreito{% endblock %}
 {% block content %}
-<div class="card">
-    <div class="cabecalho-tela">
-        <p class="progresso-etapas">Etapa 1 de {{ "4" if session.get("cadastro", {}).get("tipo") == "candidato" else "2" }}</p>
-        <h1>Seus dados</h1>
-        <p class="texto-secundario">Vamos começar com o básico.</p>
-    </div>
 
-    <form method="POST">
+<div class="painel-auth">
+    {{ progresso(etapa, total_etapas) }}
+    <header class="cabecalho-auth">
+        <h1>Seus dados</h1>
+        <p>Usamos o telefone só para o instrutor falar com você sobre a aula.</p>
+    </header>
+
+    <form method="POST" class="formulario">
+        {{ campo_csrf() }}
         <div class="campo">
             <label for="nome">Nome completo</label>
-            <input type="text" id="nome" name="nome" value="{{ dados.get('nome', '') }}" required autofocus>
+            <input type="text" id="nome" name="nome" value="{{ dados.get('nome', '') }}" required
+                   autocomplete="name" maxlength="120" {{ "autofocus" if not dados.get('nome') }}>
         </div>
         <div class="campo">
             <label for="email">E-mail</label>
-            <input type="email" id="email" name="email" value="{{ dados.get('email', '') }}" required>
+            <input type="email" id="email" name="email" value="{{ dados.get('email', '') }}" required
+                   autocomplete="email" inputmode="email" autocapitalize="none" spellcheck="false" maxlength="254">
         </div>
         <div class="campo">
-            <label for="senha">Senha</label>
-            <input type="password" id="senha" name="senha" required minlength="6">
-            <p class="dica-campo">Mínimo de 6 caracteres.</p>
+            <div class="campo-rotulo-linha">
+                <label for="senha">Senha</label>
+                <button type="button" class="botao-link" data-alternar-senha="senha" hidden>Mostrar</button>
+            </div>
+            <input type="password" id="senha" name="senha" required minlength="8"
+                   autocomplete="new-password" aria-describedby="dica-senha">
+            <p class="dica" id="dica-senha">Pelo menos 8 caracteres.</p>
         </div>
         <div class="campo">
-            <label for="cidade">Cidade (Espírito Santo)</label>
-            <select id="cidade" name="cidade" required>
-                <option value="" disabled {{ "selected" if not dados.get('cidade') }}>Selecione sua cidade</option>
+            <label for="cidade">Cidade</label>
+            <select id="cidade" name="cidade" required autocomplete="address-level2">
+                <option value="" disabled {{ "selected" if not dados.get('cidade') }}>Selecione sua cidade no ES</option>
                 {% for cidade in cidades %}
                 <option value="{{ cidade }}" {{ "selected" if dados.get('cidade') == cidade }}>{{ cidade }}</option>
                 {% endfor %}
             </select>
         </div>
         <div class="campo">
-            <label for="telefone">Telefone</label>
-            <div class="campo-com-prefixo">
-                <span class="prefixo">({{ ddd }})</span>
-                <input type="tel" id="telefone" name="telefone" inputmode="numeric"
-                       placeholder="99999-9999" value="{{ dados.get('telefone', '') }}">
+            <label for="telefone">Celular <span class="opcional">(opcional)</span></label>
+            <div class="campo-prefixo">
+                <span class="prefixo" aria-hidden="true">({{ ddd }})</span>
+                {% set tel = dados.get('telefone', '') or '' %}
+                <input type="tel" id="telefone" name="telefone" inputmode="numeric" autocomplete="tel-national"
+                       placeholder="99999-9999" maxlength="15" aria-describedby="dica-telefone"
+                       value="{{ tel[2:] if tel.startswith(ddd) and tel|length > 9 else tel }}">
             </div>
+            <p class="dica" id="dica-telefone">DDD {{ ddd }}. Digite só o número.</p>
         </div>
-        <button type="submit" class="botao botao-primario">Continuar</button>
+        <button type="submit" class="botao botao-primario botao-bloco">Continuar</button>
     </form>
 </div>
+
 {% endblock %}

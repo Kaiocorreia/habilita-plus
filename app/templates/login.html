@@ -1,26 +1,40 @@
 {% extends "base.html" %}
+{% from "_componentes.html" import campo_csrf %}
 {% block title %}Entrar · Habilita+{% endblock %}
+{% block description %}Entre na sua conta Habilita+ para buscar instrutores, agendar e acompanhar suas aulas.{% endblock %}
+{% block main_class %}conteudo-estreito{% endblock %}
 {% block content %}
-<div class="splash-logo" style="text-align:center; margin-bottom: 28px;">Habilita<span class="mais">+</span></div>
 
-<div class="card">
-    <div class="cabecalho-tela">
-        <h1>Entrar</h1>
-        <p class="texto-secundario">Acesse sua conta para continuar.</p>
-    </div>
+<div class="painel-auth">
+    <header class="cabecalho-auth">
+        <h1>Bem-vindo de volta</h1>
+        <p>Entre para ver suas aulas e agendar novas.</p>
+    </header>
 
-    <form method="POST">
+    <form method="POST" action="{{ url_for('auth.login') }}" class="formulario">
+        {{ campo_csrf() }}
+        {% if proximo %}<input type="hidden" name="proximo" value="{{ proximo }}">{% endif %}
+
         <div class="campo">
             <label for="email">E-mail</label>
-            <input type="email" id="email" name="email" value="{{ email }}" required autofocus>
+            <input type="email" id="email" name="email" value="{{ email }}" required
+                   autocomplete="email" inputmode="email" autocapitalize="none" spellcheck="false"
+                   {{ "autofocus" if not email }}>
         </div>
+
         <div class="campo">
-            <label for="senha">Senha</label>
-            <input type="password" id="senha" name="senha" required>
+            <div class="campo-rotulo-linha">
+                <label for="senha">Senha</label>
+                <button type="button" class="botao-link" data-alternar-senha="senha" hidden>Mostrar</button>
+            </div>
+            <input type="password" id="senha" name="senha" required autocomplete="current-password"
+                   {{ "autofocus" if email }}>
         </div>
-        <button type="submit" class="botao botao-primario">Entrar</button>
+
+        <button type="submit" class="botao botao-primario botao-bloco" data-enviando="Entrando…">Entrar</button>
     </form>
+
+    <p class="rodape-auth">Ainda não tem conta? <a href="{{ url_for('auth.cadastro_tipo') }}">Criar conta</a></p>
 </div>
 
-<p class="rodape-acao">Ainda não tem conta? <a href="{{ url_for('auth.cadastro_tipo') }}">Cadastre-se</a></p>
 {% endblock %}

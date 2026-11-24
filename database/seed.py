@@ -1,8 +1,12 @@
+import sys
 from datetime import date, timedelta
 
 from werkzeug.security import generate_password_hash
 
-from db import get_connection
+try:
+    from database.db import get_connection
+except ImportError:  # executado como script: python database/seed.py
+    from db import get_connection
 
 SENHA_PADRAO = generate_password_hash("senha123")
 
@@ -137,8 +141,36 @@ def inserir_avaliacao(conexao, agendamento_id, candidato_id, instrutor_id, nota,
     )
 
 
-def semear():
+DOMINIOS_DO_SEED = ("@habilitaplus.com", "@example.com")
+
+
+def contas_reais(conexao):
+    """Conta usuários que não vieram do seed: cadastros feitos por pessoas reais."""
+    filtro = " AND ".join("email NOT LIKE ?" for _ in DOMINIOS_DO_SEED)
+    return conexao.execute(
+        f"SELECT COUNT(*) FROM usuarios WHERE {filtro}",
+        [f"%{dominio}" for dominio in DOMINIOS_DO_SEED],
+    ).fetchone()[0]
+
+
+def semear(forcar=False):
     conexao = get_connection()
+
+    # O seed APAGA todas as tabelas. Se já houver cadastros reais, rodá-lo por
+    # engano no servidor de produção destruiria os dados dos usuários.
+    tabela_existe = conexao.execute(
+        "SELECT 1 FROM sqlite_master WHERE type = 'table' AND name = 'usuarios'"
+    ).fetchone()
+    if tabela_existe and not forcar:
+        reais = contas_reais(conexao)
+        if reais:
+            conexao.close()
+            sys.exit(
+                f"Seed cancelado: o banco tem {reais} conta(s) criada(s) por usuários reais.\n"
+                "Rodar o seed apagaria todas elas. Se é isso mesmo que você quer,\n"
+                "repita com: python database/seed.py --apagar-tudo"
+            )
+
     limpar_tabelas(conexao)
 
     hoje = date.today()
@@ -292,4 +324,4 @@ def semear():
 
 
 if __name__ == "__main__":
-    semear()
+    semear(forcar="--apagar-tudo" in sys.argv)

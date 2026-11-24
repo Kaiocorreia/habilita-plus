@@ -32,3 +32,28 @@ CIDADES_ES = [
     "Sooretama", "Vargem Alta", "Venda Nova do Imigrante", "Viana", "Vila Pavão",
     "Vila Valério", "Vila Velha", "Vitória",
 ]
+
+TIPOS_DEFICIENCIA = [
+    "Surdez ou deficiência auditiva",
+    "Deficiência visual",
+    "Deficiência física",
+    "Deficiência intelectual",
+    "Outra",
+]
+
+CANAIS_COMUNICACAO = {
+    "texto": "Texto",
+    "libras": "Libras",
+    "audio": "Áudio",
+}
+
+# Atributos de atendimento do instrutor: (coluna no banco, rótulo, descrição).
+ATENDIMENTOS_INSTRUTOR = [
+    ("atende_libras", "Atendo em Libras", "Você aparece quando candidatos filtram por Libras."),
+    ("somente_mulheres", "Sou mulher", "Você aparece quando candidatas filtram por instrutoras."),
+    ("atende_neurodivergentes", "Experiência com pessoas neurodivergentes", "TDAH, autismo, dislexia e outros."),
+    ("atende_pcd", "Experiência com pessoas com deficiência", "Surdez, baixa visão, mobilidade reduzida e outros."),
+    ("veiculo_adaptado_disponivel", "Tenho veículo adaptado disponível", "Para candidatos que precisam de adaptação."),
+]
+
+VALOR_AULA_MAXIMO = 1000

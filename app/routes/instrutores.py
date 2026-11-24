@@ -1,34 +1,15 @@
-from flask import Blueprint, abort, redirect, render_template, session, url_for
+from flask import Blueprint, abort, flash, g, redirect, render_template, request, url_for
 
+from app.agenda import concluir_aulas_passadas
+from app.constantes import ATENDIMENTOS_INSTRUTOR, CATEGORIAS_CNH
+from app.consultas import SELECT_INSTRUTORES, VEICULOS_DO_INSTRUTOR
+from app.formularios import validar_perfil_profissional
+from app.sessao import exige_login
 from database.db import get_connection
 
 instrutores_bp = Blueprint("instrutores", __name__)
 
-CONSULTA_PERFIL = """
-    SELECT i.id,
-           u.nome,
-           u.cidade,
-           u.telefone,
-           u.foto_url,
-           (SELECT GROUP_CONCAT(categoria)
-              FROM (SELECT categoria FROM instrutor_categorias
-                     WHERE instrutor_id = i.id ORDER BY categoria)) AS categorias_cnh,
-           i.valor_aula,
-           i.regiao_atuacao,
-           i.verificado,
-           i.atende_libras,
-           i.somente_mulheres,
-           i.atende_neurodivergentes,
-           i.atende_pcd,
-           i.veiculo_adaptado_disponivel,
-           ROUND(AVG(a.nota), 1) AS media_estrelas,
-           COUNT(a.id)           AS total_avaliacoes
-    FROM instrutores i
-    JOIN usuarios u ON u.id = i.usuario_id
-    LEFT JOIN avaliacoes a ON a.instrutor_id = i.id
-    WHERE i.id = ?
-    GROUP BY i.id
-"""
+CONSULTA_PERFIL = SELECT_INSTRUTORES + " WHERE i.id = ? GROUP BY i.id"
 
 CONSULTA_AVALIACOES = """
     SELECT av.nota,
@@ -41,34 +22,12 @@ CONSULTA_AVALIACOES = """
     ORDER BY av.data DESC
 """
 
-CONSULTA_VEICULOS = """
-    SELECT v.id,
-           v.marca,
-           v.modelo,
-           v.categoria_cnh,
-           v.transmissao,
-           v.adaptado,
-           v.valor_locacao,
-           v.imagem
-    FROM veiculos v
-    JOIN instrutor_veiculos iv ON iv.veiculo_id = v.id
-    WHERE iv.instrutor_id = ?
-    ORDER BY v.valor_locacao ASC
-"""
-
-CONSULTA_AULAS_CONCLUIDAS = """
-    SELECT COUNT(*) AS total
-    FROM agendamentos
-    WHERE instrutor_id = ? AND status = 'concluido'
-"""
-
 
 @instrutores_bp.route("/instrutor/<int:instrutor_id>")
+@exige_login()
 def perfil(instrutor_id):
-    if "usuario_id" not in session:
-        return redirect(url_for("auth.login"))
-
     conexao = get_connection()
+    concluir_aulas_passadas(conexao)
     instrutor = conexao.execute(CONSULTA_PERFIL, (instrutor_id,)).fetchone()
 
     if instrutor is None:
@@ -76,9 +35,20 @@ def perfil(instrutor_id):
         abort(404)
 
     avaliacoes = conexao.execute(CONSULTA_AVALIACOES, (instrutor_id,)).fetchall()
-    veiculos = conexao.execute(CONSULTA_VEICULOS, (instrutor_id,)).fetchall()
-    aulas_concluidas = conexao.execute(CONSULTA_AULAS_CONCLUIDAS, (instrutor_id,)).fetchone()["total"]
+    veiculos = conexao.execute(VEICULOS_DO_INSTRUTOR, (instrutor_id,)).fetchall()
+    aulas_concluidas = conexao.execute(
+        "SELECT COUNT(*) FROM agendamentos WHERE instrutor_id = ? AND status = 'concluido'",
+        (instrutor_id,),
+    ).fetchone()[0]
+    eh_dono = conexao.execute(
+        "SELECT 1 FROM instrutores WHERE id = ? AND usuario_id = ?", (instrutor_id, g.usuario["id"])
+    ).fetchone() is not None
     conexao.close()
+
+    # Distribuição das notas (quantas de 5, de 4...) para o resumo de avaliações.
+    distribuicao = {nota: 0 for nota in range(5, 0, -1)}
+    for avaliacao in avaliacoes:
+        distribuicao[avaliacao["nota"]] += 1
 
     return render_template(
         "perfil_instrutor.html",
@@ -86,4 +56,82 @@ def perfil(instrutor_id):
         avaliacoes=avaliacoes,
         veiculos=veiculos,
         aulas_concluidas=aulas_concluidas,
+        distribuicao=distribuicao,
+        eh_dono=eh_dono,
+        pode_agendar=g.usuario["tipo"] == "candidato",
     )
+
+
+@instrutores_bp.route("/meu-perfil")
+@exige_login(tipo="instrutor")
+def meu_perfil():
+    conexao = get_connection()
+    instrutor = conexao.execute(
+        "SELECT id FROM instrutores WHERE usuario_id = ?", (g.usuario["id"],)
+    ).fetchone()
+    conexao.close()
+    if instrutor is None:
+        abort(404)
+    return redirect(url_for("instrutores.perfil", instrutor_id=instrutor["id"]))
+
+
+@instrutores_bp.route("/perfil/editar", methods=["GET", "POST"])
+@exige_login(tipo="instrutor")
+def editar_perfil():
+    conexao = get_connection()
+    instrutor = conexao.execute(
+        "SELECT * FROM instrutores WHERE usuario_id = ?", (g.usuario["id"],)
+    ).fetchone()
+    if instrutor is None:
+        conexao.close()
+        abort(404)
+
+    contexto = {"categorias": CATEGORIAS_CNH, "atendimentos": ATENDIMENTOS_INSTRUTOR,
+                "instrutor_id": instrutor["id"]}
+
+    if request.method == "POST":
+        dados, erro = validar_perfil_profissional(request.form)
+        if erro:
+            conexao.close()
+            flash(erro, "erro")
+            return render_template("editar_perfil.html", dados=dados, **contexto), 400
+
+        conexao.execute(
+            """
+            UPDATE instrutores
+               SET valor_aula = ?, regiao_atuacao = ?, atende_libras = ?, somente_mulheres = ?,
+                   atende_neurodivergentes = ?, atende_pcd = ?, veiculo_adaptado_disponivel = ?
+             WHERE id = ?
+            """,
+            (dados["valor_aula"], dados["regiao_atuacao"] or None, int(dados["atende_libras"]),
+             int(dados["somente_mulheres"]), int(dados["atende_neurodivergentes"]),
+             int(dados["atende_pcd"]), int(dados["veiculo_adaptado_disponivel"]), instrutor["id"]),
+        )
+        # Categorias: apaga e regrava. Numa tabela de junção, é mais simples (e
+        # igualmente correto) do que calcular quais entraram e quais saíram.
+        conexao.execute("DELETE FROM instrutor_categorias WHERE instrutor_id = ?", (instrutor["id"],))
+        conexao.executemany(
+            "INSERT INTO instrutor_categorias (instrutor_id, categoria) VALUES (?, ?)",
+            [(instrutor["id"], categoria) for categoria in dados["categorias"]],
+        )
+        conexao.commit()
+        conexao.close()
+
+        # Os agendamentos já feitos mantêm o preço antigo: o valor foi copiado para
+        # cada aula no momento da marcação, de propósito.
+        flash("Perfil atualizado. Aulas já marcadas mantêm o valor combinado.", "sucesso")
+        return redirect(url_for("instrutores.perfil", instrutor_id=instrutor["id"]))
+
+    categorias = [linha["categoria"] for linha in conexao.execute(
+        "SELECT categoria FROM instrutor_categorias WHERE instrutor_id = ? ORDER BY categoria",
+        (instrutor["id"],),
+    )]
+    conexao.close()
+
+    dados = {coluna: bool(instrutor[coluna]) for coluna, _r, _d in ATENDIMENTOS_INSTRUTOR}
+    dados.update(
+        categorias=categorias,
+        regiao_atuacao=instrutor["regiao_atuacao"] or "",
+        valor_texto=f"{instrutor['valor_aula']:.2f}".replace(".", ","),
+    )
+    return render_template("editar_perfil.html", dados=dados, **contexto)
