@@ -1,0 +1,46 @@
+{% extends "base.html" %}
+{% from "_componentes.html" import foto, icone, cabecalho, estado_vazio %}
+{% from "gerencia/_comum.html" import abas, estado_instrutor, acoes_instrutor %}
+{% block title %}Instrutores · Gerência · Habilita+{% endblock %}
+{% block content %}
+
+{{ cabecalho("Instrutores", subtitulo="Aprovar dá o selo de verificado. Suspender tira o perfil das buscas e bloqueia novos agendamentos.") }}
+
+{% set itens = [] %}
+{% for chave, par in filtros.items() %}
+    {% set _ = itens.append((chave, par[0], url_for('gerencia.instrutores', filtro=chave, q=busca or None), contagens[chave])) %}
+{% endfor %}
+{{ abas(itens, filtro, "Filtrar instrutores") }}
+
+<form class="busca-gerencia" method="GET" role="search">
+    <input type="hidden" name="filtro" value="{{ filtro }}">
+    <label for="q" class="oculto">Buscar por nome, e-mail ou cidade</label>
+    <input type="search" id="q" name="q" value="{{ busca }}" placeholder="Nome, e-mail ou cidade" maxlength="60">
+    <button type="submit" class="botao botao-secundario botao-sm">Buscar</button>
+</form>
+
+{% if lista %}
+<ul class="lista-gerencia">
+    {% for instrutor in lista %}
+    <li class="linha-gerencia">
+        <div class="linha-pessoa">
+            {{ foto(instrutor["foto_url"], instrutor["nome"], "md") }}
+            <div>
+                <div class="linha-titulo"><strong>{{ instrutor["nome"] }}</strong>{{ estado_instrutor(instrutor) }}</div>
+                <span>{{ instrutor["email"] }}{{ " · " ~ instrutor["telefone"] if instrutor["telefone"] }}</span>
+                <span>{{ instrutor["regiao_atuacao"] or instrutor["cidade"] or "Região não informada" }} · CNH {{ instrutor["categorias_cnh"] or "—" }} · {{ instrutor["valor_aula"] | moeda }}/aula</span>
+                <span>
+                    {% if instrutor["total_avaliacoes"] %}Nota {{ ("%.1f"|format(instrutor["media"])) | replace(".", ",") }} ({{ instrutor["total_avaliacoes"] }}){% else %}Sem avaliações{% endif %}
+                    · {{ instrutor["aulas_futuras"] }} aula(s) marcada(s) · cadastro em {{ instrutor["cadastro"] }}
+                </span>
+            </div>
+        </div>
+        {{ acoes_instrutor(instrutor, voltar=request.full_path) }}
+    </li>
+    {% endfor %}
+</ul>
+{% else %}
+    {{ estado_vazio("Nenhum instrutor aqui", "Não há perfis neste filtro" ~ (" com essa busca." if busca else "."), nome_icone="usuario") }}
+{% endif %}
+
+{% endblock %}

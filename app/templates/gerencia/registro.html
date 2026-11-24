@@ -1,0 +1,19 @@
+{% extends "base.html" %}
+{% from "_componentes.html" import cabecalho, estado_vazio %}
+{% block title %}Registro · Gerência · Habilita+{% endblock %}
+{% block content %}
+
+{{ cabecalho("Registro de ações", voltar=url_for('gerencia.painel'), voltar_rotulo="Painel",
+             subtitulo="Tudo o que a gerência fez, do mais recente para o mais antigo. Últimas 200 ações.") }}
+
+{% if acoes %}
+<ol class="lista-registro cartao">
+    {% for acao in acoes %}
+    <li><strong>{{ acao["acao"] }} {{ acao["alvo"] }}</strong><span>{{ acao["quando"] }} · {{ acao["gerente"] }}{{ " · " ~ acao["detalhe"] if acao["detalhe"] }}</span></li>
+    {% endfor %}
+</ol>
+{% else %}
+    {{ estado_vazio("Nada registrado ainda", "Cada aprovação, suspensão e ajuste fica gravado aqui, com autor e horário.", nome_icone="relogio") }}
+{% endif %}
+
+{% endblock %}

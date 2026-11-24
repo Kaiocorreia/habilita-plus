@@ -1,0 +1,88 @@
+{% extends "base.html" %}
+{% from "_componentes.html" import icone, campo_csrf, cabecalho %}
+{% block title %}{{ "Editar" if veiculo_id else "Cadastrar" }} veículo · Gerência · Habilita+{% endblock %}
+{% block main_class %}conteudo-estreito{% endblock %}
+{% block content %}
+
+{{ cabecalho(("Editar veículo" if veiculo_id else "Cadastrar veículo"), voltar=url_for('gerencia.veiculos'), voltar_rotulo="Veículos",
+             subtitulo="Mudar o valor vale para novos agendamentos. Aulas já marcadas mantêm o valor da época.") }}
+
+<form method="POST" class="formulario cartao">
+    {{ campo_csrf() }}
+    <div class="campo-duplo">
+        <div class="campo">
+            <label for="marca">Marca</label>
+            <input type="text" id="marca" name="marca" value="{{ dados.get('marca', '') }}" required maxlength="40" placeholder="Chevrolet">
+        </div>
+        <div class="campo">
+            <label for="modelo">Modelo</label>
+            <input type="text" id="modelo" name="modelo" value="{{ dados.get('modelo', '') }}" required maxlength="40" placeholder="Onix 1.0">
+        </div>
+    </div>
+
+    <div class="campo-duplo">
+        <div class="campo">
+            <label for="categoria_cnh">Categoria de CNH</label>
+            <select id="categoria_cnh" name="categoria_cnh" required>
+                {% for categoria in categorias %}
+                <option value="{{ categoria }}" {{ "selected" if dados.get('categoria_cnh') == categoria }}>{{ categoria }}</option>
+                {% endfor %}
+            </select>
+        </div>
+        <div class="campo">
+            <label for="valor_locacao">Locação por aula</label>
+            <div class="campo-prefixo">
+                <span class="prefixo" aria-hidden="true">R$</span>
+                <input type="text" id="valor_locacao" name="valor_locacao" inputmode="decimal" required maxlength="8"
+                       placeholder="35,00" value="{{ dados.get('valor_texto', '') }}">
+            </div>
+        </div>
+    </div>
+
+    <fieldset class="grupo">
+        <legend>Câmbio</legend>
+        <div class="segmentado">
+            {% for valor, rotulo in [("manual", "Manual"), ("automatico", "Automático")] %}
+            <label><input type="radio" name="transmissao" value="{{ valor }}" {{ "checked" if dados.get('transmissao') == valor }}><span>{{ rotulo }}</span></label>
+            {% endfor %}
+        </div>
+    </fieldset>
+
+    <label class="opcao opcao-check">
+        <input type="checkbox" name="adaptado" {{ "checked" if dados.get('adaptado') }}>
+        <span class="opcao-texto"><strong>Veículo adaptado</strong><span>Aparece com o selo “Adaptado” para quem precisa.</span></span>
+    </label>
+
+    <fieldset class="grupo">
+        <legend>Ilustração</legend>
+        <div class="grade-imagens">
+            {% for caminho, rotulo in imagens.items() %}
+            <label class="opcao-imagem">
+                <input type="radio" name="imagem" value="{{ caminho }}" {{ "checked" if dados.get('imagem') == caminho }}>
+                <img src="{{ url_for('static', filename=caminho) }}" alt="" width="96" height="62">
+                <span>{{ rotulo }}</span>
+            </label>
+            {% endfor %}
+        </div>
+    </fieldset>
+
+    <fieldset class="grupo">
+        <legend>Instrutores que oferecem este veículo</legend>
+        <p class="dica dica-legenda">Sem nenhum marcado, o veículo fica guardado mas não aparece no site.</p>
+        <div class="chips">
+            {% for opcao in opcoes %}
+            <label class="chip">
+                <input type="checkbox" name="instrutores" value="{{ opcao['id'] }}" {{ "checked" if opcao['id'] in dados.get('instrutores', []) }}>
+                <span>{{ icone("check") }}{{ opcao["nome"] }}{{ " (suspenso)" if not opcao["ativo"] }}</span>
+            </label>
+            {% endfor %}
+        </div>
+    </fieldset>
+
+    <div class="acoes-formulario">
+        <a class="botao botao-secundario" href="{{ url_for('gerencia.veiculos') }}">Cancelar</a>
+        <button type="submit" class="botao botao-primario" data-enviando="Salvando…">Salvar veículo</button>
+    </div>
+</form>
+
+{% endblock %}

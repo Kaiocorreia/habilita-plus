@@ -1,0 +1,67 @@
+{% extends "base.html" %}
+{% from "_componentes.html" import foto, icone, estado_vazio %}
+{% from "gerencia/_comum.html" import acoes_instrutor %}
+{% block title %}Painel · Gerência · Habilita+{% endblock %}
+{% block content %}
+
+<header class="saudacao">
+    <p class="sobretitulo">Gerência</p>
+    <h1>Painel</h1>
+    <p class="saudacao-texto">O que você muda aqui vale na hora para todo o site.</p>
+</header>
+
+<dl class="metricas metricas-3">
+    <div class="{{ 'metrica-alerta' if numeros['pendentes'] }}">
+        <dt>Aguardando aprovação</dt>
+        <dd>{{ numeros["pendentes"] }}<small><a href="{{ url_for('gerencia.instrutores', filtro='pendentes') }}">Revisar a fila</a></small></dd>
+    </div>
+    <div><dt>Instrutores ativos</dt><dd>{{ numeros["instrutores"] }}<small>{{ numeros["suspensos"] }} suspenso(s)</small></dd></div>
+    <div><dt>Candidatos</dt><dd>{{ numeros["candidatos"] }}<small>contas criadas</small></dd></div>
+    <div><dt>Aulas nos próximos 7 dias</dt><dd>{{ numeros["aulas_semana"] }}<small>agendadas ou confirmadas</small></dd></div>
+    <div><dt>Avaliações ocultas</dt><dd>{{ numeros["ocultas"] }}<small><a href="{{ url_for('gerencia.avaliacoes', filtro='ocultas') }}">Ver ocultas</a></small></dd></div>
+    <div><dt>Agendamento aberto</dt><dd>{{ config["janela_dias"] }} dias<small><a href="{{ url_for('gerencia.configuracoes_site') }}">Ajustar prazo</a></small></dd></div>
+</dl>
+
+<section class="secao" aria-labelledby="titulo-fila">
+    <div class="secao-cabecalho">
+        <h2 id="titulo-fila" class="titulo-secao">Fila de aprovação</h2>
+        <a href="{{ url_for('gerencia.instrutores', filtro='pendentes') }}">Ver todos</a>
+    </div>
+    {% if fila %}
+    <ul class="lista-gerencia">
+        {% for instrutor in fila %}
+        <li class="linha-gerencia">
+            <div class="linha-pessoa">
+                {{ foto(instrutor["foto_url"], instrutor["nome"], "md") }}
+                <div>
+                    <strong>{{ instrutor["nome"] }}</strong>
+                    <span>{{ instrutor["cidade"] or "Cidade não informada" }} · CNH {{ instrutor["categorias_cnh"] or "—" }} · {{ instrutor["valor_aula"] | moeda }}/aula</span>
+                    <span>Cadastro em {{ instrutor["cadastro"] }} · {{ instrutor["email"] }}</span>
+                </div>
+            </div>
+            {{ acoes_instrutor(instrutor, voltar=url_for('gerencia.painel')) }}
+        </li>
+        {% endfor %}
+    </ul>
+    {% else %}
+        {{ estado_vazio("Fila vazia", "Nenhum instrutor esperando aprovação. Novos cadastros aparecem aqui.", nome_icone="escudo") }}
+    {% endif %}
+</section>
+
+<section class="secao" aria-labelledby="titulo-acoes">
+    <div class="secao-cabecalho">
+        <h2 id="titulo-acoes" class="titulo-secao">Últimas ações</h2>
+        <a href="{{ url_for('gerencia.registro') }}">Registro completo</a>
+    </div>
+    {% if acoes %}
+    <ol class="lista-registro">
+        {% for acao in acoes %}
+        <li><strong>{{ acao["acao"] }} {{ acao["alvo"] }}</strong><span>{{ acao["quando"] }} · {{ acao["gerente"] }}{{ " · " ~ acao["detalhe"] if acao["detalhe"] }}</span></li>
+        {% endfor %}
+    </ol>
+    {% else %}
+        {{ estado_vazio("Nada registrado ainda", "Cada aprovação, suspensão e ajuste fica gravado aqui, com autor e horário.", nome_icone="relogio") }}
+    {% endif %}
+</section>
+
+{% endblock %}

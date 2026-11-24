@@ -23,11 +23,13 @@ SELECT_INSTRUTORES = """
            i.atende_neurodivergentes,
            i.atende_pcd,
            i.veiculo_adaptado_disponivel,
+           i.ativo,
            ROUND(AVG(a.nota), 1) AS media_estrelas,
            COUNT(a.id)           AS total_avaliacoes
     FROM instrutores i
     JOIN usuarios u ON u.id = i.usuario_id
-    LEFT JOIN avaliacoes a ON a.instrutor_id = i.id
+    -- Avaliações ocultadas pela moderação ficam fora da média e da contagem.
+    LEFT JOIN avaliacoes a ON a.instrutor_id = i.id AND a.oculta = 0
 """
 
 # Verificados primeiro; entre eles, melhor nota. "(media IS NULL)" joga quem

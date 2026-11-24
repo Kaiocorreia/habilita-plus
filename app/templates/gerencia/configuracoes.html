@@ -1,0 +1,52 @@
+{% extends "base.html" %}
+{% from "_componentes.html" import icone, campo_csrf, cabecalho %}
+{% block title %}Configurações · Gerência · Habilita+{% endblock %}
+{% block main_class %}conteudo-estreito{% endblock %}
+{% block content %}
+
+{{ cabecalho("Configurações", subtitulo="Valem para todo o site assim que você salvar.") }}
+
+<form method="POST" class="formulario">
+    {{ campo_csrf() }}
+
+    <fieldset class="grupo cartao">
+        <legend>Horários de aula</legend>
+        <p class="dica dica-legenda">Os horários que os candidatos podem escolher no agendamento. Aulas já marcadas não mudam.</p>
+        <div class="grade-horarios">
+            {% for horario in horarios_possiveis %}
+            <label class="horario horario-escolha">
+                <input type="checkbox" name="horarios" value="{{ horario }}" {{ "checked" if horario in config["horarios"] }}>
+                <span>{{ horario }}</span>
+            </label>
+            {% endfor %}
+        </div>
+    </fieldset>
+
+    <div class="cartao">
+        <div class="campo">
+            <label for="janela_dias">Agendamento aberto até quantos dias à frente</label>
+            <input type="number" id="janela_dias" name="janela_dias" min="{{ janela_minima }}" max="{{ janela_maxima }}"
+                   value="{{ config['janela_dias'] }}" required inputmode="numeric" aria-describedby="dica-janela">
+            <p class="dica" id="dica-janela">Entre {{ janela_minima }} e {{ janela_maxima }} dias. O calendário do agendamento respeita esse limite.</p>
+        </div>
+    </div>
+
+    <fieldset class="grupo cartao">
+        <legend>Aviso geral</legend>
+        <p class="dica dica-legenda">Uma faixa no topo de todas as páginas, para todos os visitantes. Use para feriados, manutenção ou novidades.</p>
+        <div class="campo">
+            <label for="aviso_texto">Texto do aviso</label>
+            <textarea id="aviso_texto" name="aviso_texto" rows="3" maxlength="{{ aviso_maximo }}"
+                      placeholder="Sem aulas no feriado de 25/12. Os horários voltam no dia 26.">{{ config["aviso_texto"] }}</textarea>
+            <p class="dica">Até {{ aviso_maximo }} caracteres.</p>
+        </div>
+        <label class="opcao opcao-check">
+            <input type="checkbox" name="aviso_ativo" {{ "checked" if config["aviso_ativo"] }}>
+            <span class="opcao-texto"><strong>Mostrar o aviso no site</strong><span>Desmarque para esconder sem apagar o texto.</span></span>
+        </label>
+    </fieldset>
+
+    <button type="submit" class="botao botao-primario botao-bloco" data-enviando="Salvando…">Salvar configurações</button>
+</form>
+
+{% endblock %}

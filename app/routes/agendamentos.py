@@ -4,9 +4,10 @@ from datetime import date, timedelta
 
 from flask import Blueprint, abort, flash, g, redirect, render_template, request, session, url_for
 
-from app.agenda import (JANELA_AGENDAMENTO_DIAS, concluir_aulas_passadas, data_agendavel,
-                        data_por_extenso, horario_ja_passou, hoje, ler_data)
-from app.constantes import DIAS_SEMANA_PT, HORARIOS_DISPONIVEIS, MESES_PT
+from app.agenda import (concluir_aulas_passadas, data_agendavel, data_por_extenso,
+                        horario_ja_passou, hoje, janela_dias, ler_data)
+from app.configuracoes import configuracoes
+from app.constantes import DIAS_SEMANA_PT, MESES_PT
 from app.consultas import SELECT_AULAS, VEICULOS_DO_INSTRUTOR
 from app.sessao import exige_login
 from database.db import get_connection
@@ -17,7 +18,7 @@ CONSULTA_INSTRUTOR = """
     SELECT i.id, u.nome, u.foto_url, i.valor_aula, i.regiao_atuacao, i.verificado, u.cidade
     FROM instrutores i
     JOIN usuarios u ON u.id = i.usuario_id
-    WHERE i.id = ?
+    WHERE i.id = ? AND i.ativo = 1
 """
 
 ATIVAS = "('agendado', 'confirmado')"
@@ -50,9 +51,9 @@ def validar_pedido(conexao, instrutor_id, data_texto, horario, veiculo_texto, ca
 
     dia = ler_data(data_texto)
     if not data_agendavel(dia):
-        return None, f"Escolha uma data entre hoje e os próximos {JANELA_AGENDAMENTO_DIAS} dias."
+        return None, f"Escolha uma data entre hoje e os próximos {janela_dias()} dias."
 
-    if horario not in HORARIOS_DISPONIVEIS:
+    if horario not in configuracoes()["horarios"]:
         return None, "Escolha um dos horários disponíveis."
     if horario_ja_passou(dia, horario):
         return None, "Esse horário já passou. Escolha outro."
@@ -99,7 +100,7 @@ def escolher(instrutor_id):
         abort(404)
 
     hoje_ = hoje()
-    limite = hoje_ + timedelta(days=JANELA_AGENDAMENTO_DIAS)
+    limite = hoje_ + timedelta(days=janela_dias())
 
     dia_escolhido = ler_data(request.args.get("data"))
     if not data_agendavel(dia_escolhido):
@@ -119,7 +120,7 @@ def escolher(instrutor_id):
     if dia_escolhido:
         do_instrutor = _horarios_do_instrutor(conexao, instrutor_id, dia_escolhido)
         do_candidato = _horarios_do_candidato(conexao, g.usuario["id"], dia_escolhido)
-        for horario in HORARIOS_DISPONIVEIS:
+        for horario in configuracoes()["horarios"]:
             if horario_ja_passou(dia_escolhido, horario):
                 motivo = "Horário já passou"
             elif horario in do_instrutor:

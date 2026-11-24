@@ -11,6 +11,8 @@ except ImportError:  # executado como script: python database/seed.py
 SENHA_PADRAO = generate_password_hash("senha123")
 
 TABELAS_EM_ORDEM_DE_LIMPEZA = [
+    "acoes_gerenciais",
+    "configuracoes",
     "avaliacoes",
     "agendamentos",
     "instrutor_categorias",
@@ -318,9 +320,13 @@ def semear(forcar=False):
         status="agendado", valor=85.00, veiculo_id=biz_id, valor_locacao=20.00,
     )
 
+    # Conta de gerente só para desenvolvimento local. Em produção, a conta é criada
+    # com database/criar_gerente.py, que exige uma senha forte.
+    inserir_usuario(conexao, "Gerência Habilita+", "gerente@habilitaplus.com", "gerente", None, None)
+
     conexao.commit()
     conexao.close()
-    print("Seed concluído: 4 instrutores, 3 candidatos, 5 veículos, 4 agendamentos, 3 avaliações.")
+    print("Seed concluído: 4 instrutores, 3 candidatos, 1 gerente, 5 veículos, 4 agendamentos, 3 avaliações.")
 
 
 if __name__ == "__main__":

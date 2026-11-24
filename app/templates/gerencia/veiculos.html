@@ -1,0 +1,35 @@
+{% extends "base.html" %}
+{% from "_componentes.html" import icone, cabecalho, estado_vazio %}
+{% block title %}Veículos · Gerência · Habilita+{% endblock %}
+{% block content %}
+
+<div class="cabecalho-com-acao">
+    {{ cabecalho("Veículos", subtitulo="Os veículos vinculados a um instrutor aparecem no perfil dele e na escolha do agendamento.") }}
+    <a class="botao botao-primario" href="{{ url_for('gerencia.editar_veiculo') }}">{{ icone("mais") }}Cadastrar veículo</a>
+</div>
+
+{% if lista %}
+<ul class="lista-gerencia">
+    {% for veiculo in lista %}
+    <li class="linha-gerencia">
+        <div class="linha-pessoa">
+            <img class="miniatura-veiculo" src="{{ url_for('static', filename=veiculo['imagem']) }}" alt="" width="72" height="46" loading="lazy">
+            <div>
+                <div class="linha-titulo"><strong>{{ veiculo["marca"] }} {{ veiculo["modelo"] }}</strong>{% if veiculo["adaptado"] %}<span class="selo selo-verificado">Adaptado</span>{% endif %}</div>
+                <span>CNH {{ veiculo["categoria_cnh"] }} · {{ "Automático" if veiculo["transmissao"] == "automatico" else "Manual" }} · locação {{ veiculo["valor_locacao"] | moeda }}</span>
+                <span>{{ veiculo["instrutores"] or "Sem instrutor vinculado: não aparece no site" }}</span>
+                <span>Usado em {{ veiculo["usos"] }} agendamento(s)</span>
+            </div>
+        </div>
+        <div class="linha-acoes">
+            <a class="botao botao-secundario botao-sm" href="{{ url_for('gerencia.editar_veiculo', veiculo_id=veiculo['id']) }}">Editar</a>
+        </div>
+    </li>
+    {% endfor %}
+</ul>
+{% else %}
+    {{ estado_vazio("Nenhum veículo cadastrado", "Cadastre um veículo e vincule a instrutores para ele aparecer no agendamento.",
+                    url_for('gerencia.editar_veiculo'), "Cadastrar veículo", "carro") }}
+{% endif %}
+
+{% endblock %}

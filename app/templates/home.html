@@ -77,7 +77,12 @@
 
 {% else %}
 
-    {% if resumo and not resumo["verificado"] %}
+    {% if resumo and not resumo["ativo"] %}
+    <div class="aviso aviso-perigo">
+        {{ icone("alerta") }}
+        <p>Seu perfil está <strong>suspenso</strong> pela gerência. Ele não aparece nas buscas e não recebe novos agendamentos. As aulas já marcadas continuam valendo.</p>
+    </div>
+    {% elif resumo and not resumo["verificado"] %}
     <div class="aviso">
         {{ icone("relogio") }}
         <p>Seu perfil está <strong>em análise</strong>. Ele já aparece nas buscas com esse aviso e recebe o selo de verificado quando a equipe confirmar seus documentos.</p>

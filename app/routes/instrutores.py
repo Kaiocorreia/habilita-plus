@@ -18,7 +18,7 @@ CONSULTA_AVALIACOES = """
            u.nome AS nome_candidato
     FROM avaliacoes av
     JOIN usuarios u ON u.id = av.candidato_id
-    WHERE av.instrutor_id = ?
+    WHERE av.instrutor_id = ? AND av.oculta = 0
     ORDER BY av.data DESC
 """
 
@@ -34,15 +34,21 @@ def perfil(instrutor_id):
         conexao.close()
         abort(404)
 
+    eh_dono = conexao.execute(
+        "SELECT 1 FROM instrutores WHERE id = ? AND usuario_id = ?", (instrutor_id, g.usuario["id"])
+    ).fetchone() is not None
+
+    # Perfil suspenso pela gerência: para os candidatos, é como se não existisse.
+    if not instrutor["ativo"] and not eh_dono and g.usuario["tipo"] != "gerente":
+        conexao.close()
+        abort(404)
+
     avaliacoes = conexao.execute(CONSULTA_AVALIACOES, (instrutor_id,)).fetchall()
     veiculos = conexao.execute(VEICULOS_DO_INSTRUTOR, (instrutor_id,)).fetchall()
     aulas_concluidas = conexao.execute(
         "SELECT COUNT(*) FROM agendamentos WHERE instrutor_id = ? AND status = 'concluido'",
         (instrutor_id,),
     ).fetchone()[0]
-    eh_dono = conexao.execute(
-        "SELECT 1 FROM instrutores WHERE id = ? AND usuario_id = ?", (instrutor_id, g.usuario["id"])
-    ).fetchone() is not None
     conexao.close()
 
     # Distribuição das notas (quantas de 5, de 4...) para o resumo de avaliações.
@@ -58,7 +64,7 @@ def perfil(instrutor_id):
         aulas_concluidas=aulas_concluidas,
         distribuicao=distribuicao,
         eh_dono=eh_dono,
-        pode_agendar=g.usuario["tipo"] == "candidato",
+        pode_agendar=g.usuario["tipo"] == "candidato" and bool(instrutor["ativo"]),
     )
 
 

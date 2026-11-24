@@ -11,11 +11,12 @@ main_bp = Blueprint("main", __name__)
 # Perfis não verificados também aparecem, mas depois dos verificados e com um selo
 # "Em análise" no cartão. Se ficassem escondidos, quem acabou de se cadastrar como
 # instrutor não se veria em lugar nenhum do site.
-CONSULTA_DESTAQUES = SELECT_INSTRUTORES + f" GROUP BY i.id ORDER BY {ORDEM_RELEVANCIA} LIMIT 6"
+CONSULTA_DESTAQUES = SELECT_INSTRUTORES + f" WHERE i.ativo = 1 GROUP BY i.id ORDER BY {ORDEM_RELEVANCIA} LIMIT 6"
 
 CONSULTA_RESUMO_INSTRUTOR = """
     SELECT i.id,
            i.verificado,
+           i.ativo,
            i.valor_aula,
            ROUND(AVG(av.nota), 1) AS media_estrelas,
            COUNT(av.id)           AS total_avaliacoes,
@@ -24,7 +25,7 @@ CONSULTA_RESUMO_INSTRUTOR = """
            (SELECT COUNT(*) FROM agendamentos
              WHERE instrutor_id = i.id AND status = 'agendado') AS aguardando_confirmacao
     FROM instrutores i
-    LEFT JOIN avaliacoes av ON av.instrutor_id = i.id
+    LEFT JOIN avaliacoes av ON av.instrutor_id = i.id AND av.oculta = 0
     WHERE i.usuario_id = ?
     GROUP BY i.id
 """
@@ -40,10 +41,10 @@ def splash():
     conexao = get_connection()
     numeros = conexao.execute(
         """
-        SELECT (SELECT COUNT(*) FROM instrutores)                   AS instrutores,
-               (SELECT COUNT(*) FROM instrutores WHERE atende_libras = 1
-                   OR atende_pcd = 1 OR veiculo_adaptado_disponivel = 1) AS inclusivos,
-               (SELECT COUNT(*) FROM avaliacoes)                    AS avaliacoes
+        SELECT (SELECT COUNT(*) FROM instrutores WHERE ativo = 1)   AS instrutores,
+               (SELECT COUNT(*) FROM instrutores WHERE ativo = 1 AND (atende_libras = 1
+                   OR atende_pcd = 1 OR veiculo_adaptado_disponivel = 1)) AS inclusivos,
+               (SELECT COUNT(*) FROM avaliacoes WHERE oculta = 0)    AS avaliacoes
         """
     ).fetchone()
     conexao.close()
@@ -101,9 +102,12 @@ def sitemap():
 @main_bp.route("/home")
 @exige_login()
 def home():
+    usuario = g.usuario
+    if usuario["tipo"] == "gerente":
+        return redirect(url_for("gerencia.painel"))
+
     conexao = get_connection()
     concluir_aulas_passadas(conexao)
-    usuario = g.usuario
 
     contexto = {"usuario": usuario}
 

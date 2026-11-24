@@ -3,7 +3,7 @@ CREATE TABLE usuarios (
     nome            TEXT NOT NULL,
     email           TEXT NOT NULL UNIQUE,
     senha_hash      TEXT NOT NULL,
-    tipo            TEXT NOT NULL CHECK (tipo IN ('candidato', 'instrutor')),
+    tipo            TEXT NOT NULL CHECK (tipo IN ('candidato', 'instrutor', 'gerente')),
     cidade          TEXT,
     telefone        TEXT,
     foto_url        TEXT,
@@ -30,6 +30,8 @@ CREATE TABLE instrutores (
     atende_neurodivergentes     INTEGER NOT NULL DEFAULT 0 CHECK (atende_neurodivergentes IN (0, 1)),
     atende_pcd                  INTEGER NOT NULL DEFAULT 0 CHECK (atende_pcd IN (0, 1)),
     veiculo_adaptado_disponivel INTEGER NOT NULL DEFAULT 0 CHECK (veiculo_adaptado_disponivel IN (0, 1)),
+    -- 0 = suspenso pela gerência: some das buscas e não recebe agendamentos.
+    ativo                       INTEGER NOT NULL DEFAULT 1 CHECK (ativo IN (0, 1)),
     FOREIGN KEY (usuario_id) REFERENCES usuarios (id) ON DELETE CASCADE
 );
 
@@ -98,9 +100,28 @@ CREATE TABLE avaliacoes (
     nota            INTEGER NOT NULL CHECK (nota BETWEEN 1 AND 5),
     comentario      TEXT,
     data            TEXT NOT NULL DEFAULT (datetime('now')),
+    -- 1 = ocultada pela moderação: sai do perfil e da média, mas não é apagada.
+    oculta          INTEGER NOT NULL DEFAULT 0 CHECK (oculta IN (0, 1)),
     FOREIGN KEY (agendamento_id) REFERENCES agendamentos (id) ON DELETE CASCADE,
     FOREIGN KEY (candidato_id) REFERENCES usuarios (id),
     FOREIGN KEY (instrutor_id) REFERENCES instrutores (id)
+);
+
+-- Configurações da plataforma, editáveis pela gerência (chave -> valor em texto).
+CREATE TABLE configuracoes (
+    chave           TEXT PRIMARY KEY,
+    valor           TEXT NOT NULL
+);
+
+-- Registro de tudo que a gerência faz: quem, o quê, sobre quem e quando.
+CREATE TABLE acoes_gerenciais (
+    id              INTEGER PRIMARY KEY AUTOINCREMENT,
+    gerente_id      INTEGER NOT NULL,
+    acao            TEXT NOT NULL,
+    alvo            TEXT NOT NULL,
+    detalhe         TEXT,
+    data            TEXT NOT NULL DEFAULT (datetime('now')),
+    FOREIGN KEY (gerente_id) REFERENCES usuarios (id)
 );
 
 -- Índice PARCIAL: impede duas aulas ativas no mesmo instrutor, data e horário.
@@ -116,3 +137,4 @@ CREATE INDEX idx_instrutor_veiculos_veiculo ON instrutor_veiculos (veiculo_id);
 CREATE INDEX idx_agendamentos_instrutor ON agendamentos (instrutor_id);
 CREATE INDEX idx_agendamentos_candidato ON agendamentos (candidato_id);
 CREATE INDEX idx_avaliacoes_instrutor ON avaliacoes (instrutor_id);
+CREATE INDEX idx_acoes_gerenciais_data ON acoes_gerenciais (data);

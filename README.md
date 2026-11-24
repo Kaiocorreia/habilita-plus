@@ -104,7 +104,8 @@ Todas as contas do seed usam a senha **`senha123`**.
 | `juliana.oliveira@habilitaplus.com` | Instrutora | 5 estrelas, R$ 90/aula, Libras, 5 veículos |
 | `fernanda.souza@habilitaplus.com` | Instrutora | R$ 85/aula, sem avaliações ainda |
 | `carlos.mendes@habilitaplus.com` | Instrutor | R$ 70/aula, 4 estrelas |
-| `roberto.almeida@habilitaplus.com` | Instrutor | **Não verificado** — não aparece nas buscas |
+| `roberto.almeida@habilitaplus.com` | Instrutor | **Em análise** — aparece nas buscas com esse selo, até a gerência aprovar |
+| `gerente@habilitaplus.com` | Gerente | Acesso à área de gerência (`/gerencia`). Só existe no seed local |
 
 ## Modelo de dados
 
@@ -292,6 +293,12 @@ desatualizado a cada nova avaliação; calculando na hora, é impossível ficar 
 | 8 | Cadastro — perfil profissional | `/cadastro/instrutor` |
 | 9 | Home do candidato (destaques e minhas aulas) | `/home` |
 | 9b | Painel do instrutor (agenda e indicadores) | `/home` |
+| G1 | Gerência — painel, fila de aprovação e últimas ações | `/gerencia` |
+| G2 | Gerência — instrutores (aprovar, revogar, suspender, reativar) | `/gerencia/instrutores` |
+| G3 | Gerência — moderação de avaliações | `/gerencia/avaliacoes` |
+| G4 | Gerência — veículos e vínculos com instrutores | `/gerencia/veiculos` |
+| G5 | Gerência — configurações da plataforma | `/gerencia/configuracoes` |
+| G6 | Gerência — registro de ações | `/gerencia/registro` |
 | 10 | Busca com filtros | `/busca` |
 | 10b | Minhas aulas / Agenda do instrutor (próximas, histórico, cancelar, confirmar) | `/minhas-aulas` |
 | 11 | Perfil do instrutor | `/instrutor/<id>` |
@@ -341,11 +348,13 @@ habilita-plus/
 │       ├── manifest.json    configuração do PWA
 │       └── service-worker.js
 ├── database/
-│   ├── schema.sql           definição das 10 tabelas e 7 índices
+│   ├── schema.sql           definição das 12 tabelas e 8 índices
+│   ├── migrar.py            atualiza um banco existente sem perder dados
+│   ├── criar_gerente.py     cria a conta de gerente (não há cadastro pelo site)
 │   ├── db.py                conexão SQLite
 │   ├── init_db.py           cria o banco
 │   └── seed.py              popula com dados de exemplo (recusa apagar contas reais)
-├── tests/test_app.py        38 testes automatizados
+├── tests/                   56 testes automatizados (app e gerência)
 ├── instance/habilita.db     o banco (gerado, não versionado)
 ├── requirements.txt
 └── run.py
@@ -388,6 +397,40 @@ seguinte. `app/agenda.py` usa o horário de Brasília para decidir o que é pass
 **Calendário sem JavaScript.** O calendário de agendamento é uma tabela HTML gerada pelo
 módulo `calendar` do Python, e cada dia é um link comum. Funciona com o botão Voltar do
 navegador e com leitores de tela — relevante num projeto cujo foco é acessibilidade.
+
+## Área de gerência
+
+Uma área exclusiva para contas do tipo `gerente`, em `/gerencia`. Tudo o que se muda ali
+vale na hora para o site inteiro:
+
+| Ação | Efeito no site |
+|---|---|
+| **Aprovar** um instrutor | Ganha o selo *Verificado* e sobe na ordenação das buscas |
+| **Revogar** a verificação | Volta para *Em análise* |
+| **Suspender** | Sai das buscas e da vitrine, o perfil fica inacessível para candidatos e não recebe novos agendamentos. As aulas já marcadas continuam valendo, e o próprio instrutor vê um aviso no painel dele |
+| **Ocultar** uma avaliação | Sai do perfil e da média (recalculada na hora). Nada é apagado: pode ser restaurada |
+| **Cadastrar ou editar** um veículo | Aparece no perfil e no agendamento dos instrutores vinculados |
+| **Horários de aula** | Mudam as opções do calendário de agendamento |
+| **Janela de agendamento** | Limita até quantos dias à frente se pode marcar aula |
+| **Aviso geral** | Faixa preta no topo de todas as páginas, para todos os visitantes |
+
+Toda ação fica no **registro** (`acoes_gerenciais`): quem fez, o quê, sobre quem e quando.
+O registro é gravado na mesma transação da mudança, então ou os dois ficam salvos ou
+nenhum.
+
+**Não existe cadastro de gerente pelo site**, de propósito: se existisse, qualquer pessoa
+poderia se tornar gerente. A conta é criada no servidor, e a senha é digitada no console
+(não aparece na tela nem fica no histórico):
+
+```bash
+python database/criar_gerente.py email@exemplo.com "Nome Completo"
+```
+
+A senha do gerente precisa ter pelo menos 10 caracteres. Rodar o comando de novo com o
+mesmo e-mail redefine a senha.
+
+**Novas estruturas no banco:** `instrutores.ativo`, `avaliacoes.oculta`, o tipo `gerente`
+em `usuarios`, e as tabelas `configuracoes` (chave → valor) e `acoes_gerenciais`.
 
 ## Acessibilidade
 
@@ -444,12 +487,13 @@ botão Compartilhar → "Adicionar à Tela de Início".
 python -m unittest discover -s tests -t . -v
 ```
 
-38 testes, usando um banco temporário (nunca tocam em `instance/habilita.db`). Cobrem:
+56 testes, usando um banco temporário (nunca tocam em `instance/habilita.db`). Cobrem:
 páginas públicas e de erro, proteção CSRF, cabeçalhos de segurança, senha fora do cookie,
 entradas inválidas que antes derrubavam o servidor, fluxo completo de agendamento,
 horário duplicado (pela aplicação e pelo índice parcial do banco), cancelamento,
-confirmação pelo instrutor, ciclo de vida até a avaliação, cadastro, edição de perfil e
-busca. Usam só a biblioteca padrão (`unittest`), sem dependência nova.
+confirmação pelo instrutor, ciclo de vida até a avaliação, cadastro, edição de perfil,
+busca e, na gerência, o controle de acesso, o efeito de cada ação no site, a migração de
+um banco no formato antigo e a criação da conta de gerente. Usam só a biblioteca padrão (`unittest`), sem dependência nova.
 
 ## Publicação com HTTPS (PythonAnywhere)
 
@@ -553,6 +597,15 @@ cd ~/habilita-plus && git pull
 
 Depois clique em **Reload** na aba Web.
 
+**Mudanças na estrutura do banco são aplicadas sozinhas.** Ao iniciar, o app confere se o
+banco precisa de colunas ou tabelas novas e, se precisar, faz uma cópia de segurança
+(`instance/habilita-antes-da-migracao-AAAAMMDD-HHMMSS.db`) e aplica só o que falta,
+sem apagar nada. Rodar de novo não faz nada. Para aplicar à mão:
+
+```bash
+python database/migrar.py
+```
+
 > O `git pull` traz só o código. O banco (`instance/habilita.db`) fica de fora do
 > versionamento de propósito — o do servidor é independente do seu, e os cadastros feitos
 > no site publicado não são apagados por um `git pull`. Só rode `init_db.py` lá de novo se
@@ -584,15 +637,16 @@ Pontos deixados em aberto conscientemente, por estarem fora do escopo desta fase
   seção *Publicação com HTTPS* para resolver isso.
 - **Instrutor não define disponibilidade.** Todos os profissionais oferecem a mesma grade
   fixa de horários (07:00–17:00). O passo natural seria uma tabela `disponibilidades`.
-- **Instrutor não cadastra veículos.** Os veículos existem só pelo seed; a edição de
-  perfil cobre valor, região, categorias e atendimento.
+- **Instrutor não cadastra veículos.** Quem cadastra e vincula veículos é a gerência; a
+  edição de perfil do instrutor cobre valor, região, categorias e atendimento.
 - **Sem lembretes nem recuperação de senha.** Ambos dependem de um serviço de envio de
   e-mail ou mensagem, que exige credenciais externas.
 - **Sem limite de tentativas de login.** Exigiria guardar tentativas por IP; fica como
   próxima melhoria de segurança.
-- **Verificação de perfil não tem fluxo de aprovação.** Perfis novos aparecem nas buscas
-  marcados como *Em análise* e ordenados depois dos verificados; a promoção para
-  `verificado = 1` precisa ser feita direto no banco, sem tela de administração.
+- **Verificação sem envio de documentos.** A gerência aprova pelo painel, mas o instrutor
+  ainda não anexa documentos pelo site; a conferência acontece fora da plataforma.
+- **Suspensão não avisa os candidatos.** As aulas já marcadas continuam valendo; avisar os
+  alunos dependeria de um serviço de e-mail ou mensagem.
 - **Pagamento fora do app**, combinado diretamente com o profissional.
 
 ## Créditos das imagens

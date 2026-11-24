@@ -1,0 +1,41 @@
+{% extends "base.html" %}
+{% from "_componentes.html" import estrelas, cabecalho, estado_vazio %}
+{% from "gerencia/_comum.html" import abas, botao_acao %}
+{% block title %}Avaliações · Gerência · Habilita+{% endblock %}
+{% block content %}
+
+{{ cabecalho("Avaliações", subtitulo="Ocultar tira o comentário do perfil e a nota da média. Nada é apagado: dá para restaurar depois.") }}
+
+{{ abas([
+    ("visiveis", "Publicadas", url_for('gerencia.avaliacoes', filtro='visiveis'), contagens['visiveis']),
+    ("ocultas", "Ocultas", url_for('gerencia.avaliacoes', filtro='ocultas'), contagens['ocultas']),
+], filtro, "Filtrar avaliações") }}
+
+{% if lista %}
+<ul class="lista-gerencia">
+    {% for avaliacao in lista %}
+    <li class="linha-gerencia">
+        <div class="linha-avaliacao">
+            <p class="avaliacao-nota">{{ estrelas(avaliacao["nota"]) }}<strong>{{ avaliacao["nota"] }}/5</strong></p>
+            {% if avaliacao["comentario"] %}<p class="avaliacao-texto">“{{ avaliacao["comentario"] }}”</p>
+            {% else %}<p class="texto-suave">Sem comentário, só a nota.</p>{% endif %}
+            <span class="linha-meta">{{ avaliacao["candidato"] }} sobre <a href="{{ url_for('instrutores.perfil', instrutor_id=avaliacao['instrutor_id']) }}">{{ avaliacao["instrutor"] }}</a> · {{ avaliacao["data_formatada"] }}</span>
+        </div>
+        <div class="linha-acoes">
+            {% if filtro == "visiveis" %}
+                {{ botao_acao(url_for('gerencia.acao_avaliacao', avaliacao_id=avaliacao['id'], acao='ocultar'), "Ocultar", "botao-secundario botao-perigo",
+                              confirmar="Ocultar esta avaliação? Ela sai do perfil de " ~ avaliacao['instrutor'] ~ " e da média.") }}
+            {% else %}
+                {{ botao_acao(url_for('gerencia.acao_avaliacao', avaliacao_id=avaliacao['id'], acao='restaurar'), "Restaurar") }}
+            {% endif %}
+        </div>
+    </li>
+    {% endfor %}
+</ul>
+{% else %}
+    {{ estado_vazio("Nenhuma avaliação " ~ ("oculta" if filtro == "ocultas" else "publicada"),
+                    "Avaliações aparecem aqui depois que candidatos avaliam aulas concluídas." if filtro == "visiveis"
+                    else "Avaliações que você ocultar ficam guardadas aqui.", nome_icone="estrela") }}
+{% endif %}
+
+{% endblock %}

@@ -28,7 +28,8 @@ def exige_login(tipo=None):
         def protegida(*args, **kwargs):
             usuario_id = session.get("usuario_id")
             if usuario_id is None:
-                return redirect(url_for("auth.login", proximo=request.path))
+                # full_path mantém os filtros da URL (?filtro=...) depois do login.
+                return redirect(url_for("auth.login", proximo=request.full_path.rstrip("?")))
 
             conexao = get_connection()
             usuario = conexao.execute(

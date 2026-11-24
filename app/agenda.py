@@ -6,13 +6,18 @@ sistema já consideraria "amanhã" e liberaria ou bloquearia horários errados.
 
 from datetime import date, datetime, time, timedelta, timezone
 
+from app.configuracoes import configuracoes
+
 # O Espírito Santo segue o horário de Brasília, que não tem horário de verão
 # desde 2019. Um deslocamento fixo dispensa o pacote tzdata no Windows.
 FUSO_BRASILIA = timezone(timedelta(hours=-3), "BRT")
 DURACAO_AULA = timedelta(hours=1)
 
-# Até quantos dias à frente uma aula pode ser marcada.
-JANELA_AGENDAMENTO_DIAS = 90
+
+
+def janela_dias():
+    """Até quantos dias à frente uma aula pode ser marcada (definido pela gerência)."""
+    return configuracoes()["janela_dias"]
 
 
 def agora():
@@ -40,7 +45,7 @@ def horario_ja_passou(dia, horario):
 
 
 def data_agendavel(dia):
-    return dia is not None and hoje() <= dia <= hoje() + timedelta(days=JANELA_AGENDAMENTO_DIAS)
+    return dia is not None and hoje() <= dia <= hoje() + timedelta(days=janela_dias())
 
 
 def concluir_aulas_passadas(conexao):

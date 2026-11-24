@@ -1,0 +1,51 @@
+{# Peças compartilhadas pelas telas da gerência. #}
+{% from "_componentes.html" import icone, campo_csrf %}
+
+{# Abas de filtro: links em pílula; a ativa fica preta (padrão de seleção do DESIGN.md). #}
+{% macro abas(itens, ativo, rotulo) -%}
+<nav class="abas" aria-label="{{ rotulo }}">
+    {% for chave, texto, url, contagem in itens %}
+    <a class="aba" href="{{ url }}" {{ 'aria-current=page' if chave == ativo }}>
+        {{ texto }}{% if contagem is not none %}<span class="aba-contagem">{{ contagem }}</span>{% endif %}
+    </a>
+    {% endfor %}
+</nav>
+{%- endmacro %}
+
+{% macro estado_instrutor(instrutor) -%}
+    {%- if not instrutor["ativo"] -%}
+        <span class="selo selo-suspenso">Suspenso</span>
+    {%- elif instrutor["verificado"] -%}
+        <span class="selo selo-verificado">{{ icone("escudo") }}Verificado</span>
+    {%- else -%}
+        <span class="selo selo-analise">Em análise</span>
+    {%- endif -%}
+{%- endmacro %}
+
+{# Botão de ação que faz POST. "confirmar" abre a confirmação do navegador antes. #}
+{% macro botao_acao(url, texto, classe="botao-secundario", confirmar=None, voltar=None) -%}
+<form method="POST" action="{{ url }}" {% if confirmar %}data-confirmar="{{ confirmar }}"{% endif %}>
+    {{ campo_csrf() }}
+    {% if voltar %}<input type="hidden" name="voltar" value="{{ voltar }}">{% endif %}
+    <button type="submit" class="botao {{ classe }} botao-sm" data-enviando="…">{{ texto }}</button>
+</form>
+{%- endmacro %}
+
+{# Ações sobre um instrutor, iguais no painel e na lista. #}
+{% macro acoes_instrutor(instrutor, voltar=None) -%}
+<div class="linha-acoes">
+    {% if instrutor["ativo"] and not instrutor["verificado"] %}
+        {{ botao_acao(url_for('gerencia.acao_instrutor', instrutor_id=instrutor['id'], acao='aprovar'), "Aprovar", "botao-primario", voltar=voltar) }}
+    {% elif instrutor["ativo"] %}
+        {{ botao_acao(url_for('gerencia.acao_instrutor', instrutor_id=instrutor['id'], acao='revogar'), "Revogar selo",
+                      confirmar="Revogar a verificação de " ~ instrutor['nome'] ~ "? O perfil volta para “Em análise”.", voltar=voltar) }}
+    {% endif %}
+    {% if instrutor["ativo"] %}
+        {{ botao_acao(url_for('gerencia.acao_instrutor', instrutor_id=instrutor['id'], acao='suspender'), "Suspender", "botao-secundario botao-perigo",
+                      confirmar="Suspender " ~ instrutor['nome'] ~ "? O perfil sai das buscas e não recebe novos agendamentos.", voltar=voltar) }}
+    {% else %}
+        {{ botao_acao(url_for('gerencia.acao_instrutor', instrutor_id=instrutor['id'], acao='reativar'), "Reativar", "botao-primario", voltar=voltar) }}
+    {% endif %}
+    <a class="botao-link" href="{{ url_for('instrutores.perfil', instrutor_id=instrutor['id']) }}">Ver perfil</a>
+</div>
+{%- endmacro %}

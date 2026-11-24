@@ -7,6 +7,8 @@ from flask import Flask, flash, redirect, render_template, request, url_for
 from werkzeug.middleware.proxy_fix import ProxyFix
 
 from app.agenda import data_por_extenso, formatar_moeda
+from app.configuracoes import configuracoes
+from database.migrar import migrar
 from app.seguranca import aplicar_cabecalhos, token_csrf, verificar_csrf
 
 
@@ -47,6 +49,13 @@ def create_app():
     app.before_request(verificar_csrf)
     app.after_request(lambda resposta: aplicar_cabecalhos(resposta, https))
 
+    # Atualiza a estrutura do banco se o código novo precisar (com cópia de
+    # segurança antes). Assim, publicar é só "git pull + Reload": não há passo
+    # manual para esquecer. Num banco já atualizado, só confere e segue.
+    feito = migrar(silencioso=True)
+    if feito:
+        app.logger.warning("Banco migrado: %s", "; ".join(feito))
+
     _registrar_templates(app)
     _registrar_erros(app)
 
@@ -56,6 +65,7 @@ def create_app():
     from app.routes.instrutores import instrutores_bp
     from app.routes.agendamentos import agendamentos_bp
     from app.routes.avaliacoes import avaliacoes_bp
+    from app.routes.gerencia import gerencia_bp
 
     app.register_blueprint(main_bp)
     app.register_blueprint(auth_bp)
@@ -63,6 +73,13 @@ def create_app():
     app.register_blueprint(instrutores_bp)
     app.register_blueprint(agendamentos_bp)
     app.register_blueprint(avaliacoes_bp)
+    app.register_blueprint(gerencia_bp)
+
+    @app.context_processor
+    def aviso_da_gerencia():
+        # O aviso geral aparece no topo de todas as páginas enquanto estiver ativo.
+        dados = configuracoes()
+        return {"aviso_geral": dados["aviso_texto"] if dados["aviso_ativo"] else None}
 
     return app
 

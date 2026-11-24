@@ -54,11 +54,19 @@
             {# Mesma navegação da barra inferior; esta só aparece em telas largas. #}
             <nav class="nav-topo" aria-label="Navegação principal">
                 {% block nav_links %}
+                {% if tipo == "gerente" %}
+                <a href="{{ url_for('gerencia.painel') }}" {{ 'aria-current=page' if rota == 'gerencia.painel' }}>Painel</a>
+                <a href="{{ url_for('gerencia.instrutores') }}" {{ 'aria-current=page' if rota.startswith('gerencia.') and 'instrutor' in rota }}>Instrutores</a>
+                <a href="{{ url_for('gerencia.avaliacoes') }}" {{ 'aria-current=page' if 'avaliac' in rota and rota.startswith('gerencia.') }}>Avaliações</a>
+                <a href="{{ url_for('gerencia.veiculos') }}" {{ 'aria-current=page' if 'veiculo' in rota and rota.startswith('gerencia.') }}>Veículos</a>
+                <a href="{{ url_for('gerencia.configuracoes_site') }}" {{ 'aria-current=page' if rota == 'gerencia.configuracoes_site' }}>Configurações</a>
+                {% else %}
                 <a href="{{ url_for('main.home') }}" {{ 'aria-current=page' if rota == 'main.home' }}>Início</a>
+                {% endif %}
                 {% if tipo == "candidato" %}
                 <a href="{{ url_for('busca.buscar') }}" {{ 'aria-current=page' if rota == 'busca.buscar' }}>Buscar</a>
                 <a href="{{ url_for('agendamentos.minhas_aulas') }}" {{ 'aria-current=page' if rota == 'agendamentos.minhas_aulas' }}>Minhas aulas</a>
-                {% else %}
+                {% elif tipo == "instrutor" %}
                 <a href="{{ url_for('agendamentos.minhas_aulas') }}" {{ 'aria-current=page' if rota == 'agendamentos.minhas_aulas' }}>Agenda</a>
                 <a href="{{ url_for('instrutores.meu_perfil') }}" {{ 'aria-current=page' if rota in ('instrutores.perfil', 'instrutores.editar_perfil') }}>Meu perfil</a>
                 {% endif %}
@@ -79,6 +87,12 @@
         </div>
     </header>
 
+    {% if aviso_geral %}
+    <div class="aviso-geral" role="note">
+        <div class="aviso-geral-interno">{{ icone("alerta") }}<p>{{ aviso_geral }}</p></div>
+    </div>
+    {% endif %}
+
     <main id="conteudo" class="conteudo {% block main_class %}{% endblock %}" tabindex="-1">
         <div class="mensagens" role="status" aria-live="polite">
             {% for categoria, mensagem in get_flashed_messages(with_categories=true) %}
@@ -93,9 +107,27 @@
 
     {% if logado %}
     <nav class="nav-inferior" aria-label="Navegação principal">
+        {% if tipo == "gerente" %}
+        <a href="{{ url_for('gerencia.painel') }}" {{ 'aria-current=page' if rota == 'gerencia.painel' }}>
+            {{ icone("casa") }}<span>Painel</span>
+        </a>
+        <a href="{{ url_for('gerencia.instrutores') }}" {{ 'aria-current=page' if rota.startswith('gerencia.') and 'instrutor' in rota }}>
+            {{ icone("escudo") }}<span>Perfis</span>
+        </a>
+        <a href="{{ url_for('gerencia.avaliacoes') }}" {{ 'aria-current=page' if 'avaliac' in rota and rota.startswith('gerencia.') }}>
+            {{ icone("estrela") }}<span>Notas</span>
+        </a>
+        <a href="{{ url_for('gerencia.veiculos') }}" {{ 'aria-current=page' if 'veiculo' in rota and rota.startswith('gerencia.') }}>
+            {{ icone("carro") }}<span>Carros</span>
+        </a>
+        <a href="{{ url_for('gerencia.configuracoes_site') }}" {{ 'aria-current=page' if rota == 'gerencia.configuracoes_site' }}>
+            {{ icone("editar") }}<span>Ajustes</span>
+        </a>
+        {% else %}
         <a href="{{ url_for('main.home') }}" {{ 'aria-current=page' if rota == 'main.home' }}>
             {{ icone("casa") }}<span>Início</span>
         </a>
+        {% endif %}
         {% if tipo == "candidato" %}
         <a href="{{ url_for('busca.buscar') }}" {{ 'aria-current=page' if rota == 'busca.buscar' }}>
             {{ icone("busca") }}<span>Buscar</span>
@@ -103,7 +135,7 @@
         <a href="{{ url_for('agendamentos.minhas_aulas') }}" {{ 'aria-current=page' if rota == 'agendamentos.minhas_aulas' }}>
             {{ icone("calendario") }}<span>Aulas</span>
         </a>
-        {% else %}
+        {% elif tipo == "instrutor" %}
         <a href="{{ url_for('agendamentos.minhas_aulas') }}" {{ 'aria-current=page' if rota == 'agendamentos.minhas_aulas' }}>
             {{ icone("calendario") }}<span>Agenda</span>
         </a>

@@ -88,7 +88,7 @@ def ler_filtros(argumentos):
 def montar_consulta(filtros):
     # Perfis ainda não verificados também aparecem (marcados como "Em análise"),
     # senão quem acabou de se cadastrar como instrutor ficaria invisível no site.
-    condicoes = ["1 = 1"]
+    condicoes = ["i.ativo = 1"]
     parametros = []
 
     if filtros["q"]:
